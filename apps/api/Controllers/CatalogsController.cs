@@ -149,7 +149,7 @@ public class CatalogsController : ControllerBase
                         {
                             if (DateTime.TryParse(item.fecDivisa, out var parsedDate))
                             {
-                                rates.Add(new ExchangeRate { Id = Guid.NewGuid(), Date = parsedDate, BuyRate = item.valCompra, SellRate = item.valVenta, Source = "SUNAT", IsEstimated = false });
+                                rates.Add(new ExchangeRate { Id = Guid.NewGuid(), Date = DateTime.SpecifyKind(parsedDate, DateTimeKind.Utc), BuyRate = item.valCompra, SellRate = item.valVenta, Source = "SUNAT", IsEstimated = false });
                             }
                         }
                     }
@@ -174,7 +174,7 @@ public class CatalogsController : ControllerBase
                             {
                                 if (DateTime.TryParse(item.fecha, out var parsedDate))
                                 {
-                                    rates.Add(new ExchangeRate { Id = Guid.NewGuid(), Date = parsedDate, BuyRate = item.compra, SellRate = item.venta, Source = "APIs.net.pe", IsEstimated = false });
+                                    rates.Add(new ExchangeRate { Id = Guid.NewGuid(), Date = DateTime.SpecifyKind(parsedDate, DateTimeKind.Utc), BuyRate = item.compra, SellRate = item.venta, Source = "APIs.net.pe", IsEstimated = false });
                                 }
                             }
                         }
