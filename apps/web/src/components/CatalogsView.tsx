@@ -54,6 +54,7 @@ interface ExchangeRateItem {
   date: string;
   buyRate: number;
   sellRate: number;
+  source?: string;
 }
 
 export function CatalogsView() {
@@ -111,18 +112,6 @@ export function CatalogsView() {
   const [selectedMonth, setSelectedMonth] = useState<string>('8'); // Agosto por defecto en 2026
   const [selectedYear, setSelectedYear] = useState<string>('2026');
 
-  const formatDateIgnoreTimezone = (dateStr: string) => {
-    if (!dateStr) return '';
-    // Obtener la parte YYYY-MM-DD
-    const dateOnly = dateStr.split('T')[0];
-    const parts = dateOnly.split('-');
-    if (parts.length === 3) {
-      // Retorna formato DD/MM/YYYY
-      return `${parseInt(parts[2])}/${parseInt(parts[1])}/${parts[0]}`;
-    }
-    return new Date(dateStr).toLocaleDateString();
-  };
-
   const fetchExchangeRates = () => {
     fetch(`/api/catalogs/exchange-rates?month=${selectedMonth}&year=${selectedYear}`)
       .then(res => res.json())
@@ -151,6 +140,63 @@ export function CatalogsView() {
       alert('Error sincronizando SUNAT');
     }
     setLoadingSync(false);
+  };
+
+  // Manual Exchange Rate States
+  const [manualRateModalOpened, setManualRateModalOpened] = useState(false);
+  const [manualDate, setManualDate] = useState('');
+  const [manualBuyRate, setManualBuyRate] = useState('');
+  const [manualSellRate, setManualSellRate] = useState('');
+
+  const getDaysInMonthArray = () => {
+    const year = Number(selectedYear);
+    const month = Number(selectedMonth);
+    const numDays = new Date(year, month, 0).getDate();
+    const days = [];
+    for (let d = 1; d <= numDays; d++) {
+      const dayStr = d < 10 ? `0${d}` : `${d}`;
+      const monthStr = month < 10 ? `0${month}` : `${month}`;
+      days.push(`${year}-${monthStr}-${dayStr}`);
+    }
+    return days;
+  };
+
+  const handleEditRate = (dateStr: string, currentRate?: ExchangeRateItem) => {
+    setManualDate(dateStr);
+    setManualBuyRate(currentRate ? currentRate.buyRate.toString() : '3.395');
+    setManualSellRate(currentRate ? currentRate.sellRate.toString() : '3.408');
+    setManualRateModalOpened(true);
+  };
+
+  const handleSaveManualRate = async () => {
+    const buy = parseFloat(manualBuyRate);
+    const sell = parseFloat(manualSellRate);
+    if (isNaN(buy) || buy <= 0 || isNaN(sell) || sell <= 0) {
+      alert('Por favor ingrese valores numéricos válidos y mayores a cero.');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/catalogs/exchange-rate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: `${manualDate}T00:00:00Z`,
+          buyRate: buy,
+          sellRate: sell
+        })
+      });
+
+      if (res.ok) {
+        fetchExchangeRates();
+        setManualRateModalOpened(false);
+      } else {
+        alert('Error guardando el tipo de cambio manual.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error de conexión.');
+    }
   };
 
   useEffect(() => {
@@ -468,35 +514,86 @@ export function CatalogsView() {
                   <Table.Th style={{ color: '#94a3b8' }}>Fecha</Table.Th>
                   <Table.Th style={{ color: '#94a3b8' }}>Compra (S/)</Table.Th>
                   <Table.Th style={{ color: '#94a3b8' }}>Venta (S/)</Table.Th>
+                  <Table.Th style={{ color: '#94a3b8' }}>Origen</Table.Th>
+                  <Table.Th style={{ color: '#94a3b8', textAlign: 'right' }}>Acciones</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {exchangeRates.map((r) => (
-                  <Table.Tr key={r.id} style={{ borderColor: '#334155' }}>
-                    <Table.Td>
-                      <Text fw={600} size="sm">{formatDateIgnoreTimezone(r.date)}</Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text c="teal" fw={700}>{r.buyRate.toFixed(3)}</Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text c="blue" fw={700}>{r.sellRate.toFixed(3)}</Text>
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-                {exchangeRates.length === 0 && (
-                  <Table.Tr>
-                    <Table.Td colSpan={3} style={{ textAlign: 'center' }}>
-                      <Text c="dimmed">No hay tipos de cambio guardados. Haz clic en Sincronizar SUNAT.</Text>
-                    </Table.Td>
-                  </Table.Tr>
-                )}
+                {getDaysInMonthArray().map((dateStr) => {
+                  const r = exchangeRates.find((rate) => rate.date.startsWith(dateStr));
+                  const parts = dateStr.split('-');
+                  const formattedDisplayDate = `${parseInt(parts[2])}/${parseInt(parts[1])}/${parts[0]}`;
+
+                  return (
+                    <Table.Tr key={dateStr} style={{ borderColor: '#334155' }}>
+                      <Table.Td>
+                        <Text fw={600} size="sm">{formattedDisplayDate}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        {r ? (
+                          <Text c="teal" fw={700}>{r.buyRate.toFixed(3)}</Text>
+                        ) : (
+                          <Text c="dimmed">-</Text>
+                        )}
+                      </Table.Td>
+                      <Table.Td>
+                        {r ? (
+                          <Text c="blue" fw={700}>{r.sellRate.toFixed(3)}</Text>
+                        ) : (
+                          <Text c="dimmed">-</Text>
+                        )}
+                      </Table.Td>
+                      <Table.Td>
+                        {r ? (
+                          <Badge color={r.source === 'Manual' ? 'orange' : 'teal'} variant="light">
+                            {r.source}
+                          </Badge>
+                        ) : (
+                          <Text size="xs" c="dimmed">Sin registrar</Text>
+                        )}
+                      </Table.Td>
+                      <Table.Td style={{ textAlign: 'right' }}>
+                        <ActionIcon variant="subtle" color="blue" onClick={() => handleEditRate(dateStr, r)}>
+                          <IconEdit size={16} />
+                        </ActionIcon>
+                      </Table.Td>
+                    </Table.Tr>
+                  );
+                })}
               </Table.Tbody>
             </Table>
           </Card>
         </Tabs.Panel>
 
       </Tabs>
+
+      {/* MODAL TIPO DE CAMBIO MANUAL */}
+      <Modal opened={manualRateModalOpened} onClose={() => setManualRateModalOpened(false)} title={`Tipo de Cambio Manual (${manualDate.split('-').reverse().join('/')})`} centered radius="md">
+        <Stack gap="md">
+          <TextInput
+            label="Compra (S/)"
+            placeholder="ej. 3.395"
+            value={manualBuyRate}
+            onChange={(e) => setManualBuyRate(e.target.value)}
+            required
+            type="number"
+            step="0.001"
+          />
+          <TextInput
+            label="Venta (S/)"
+            placeholder="ej. 3.408"
+            value={manualSellRate}
+            onChange={(e) => setManualSellRate(e.target.value)}
+            required
+            type="number"
+            step="0.001"
+          />
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={() => setManualRateModalOpened(false)}>Cancelar</Button>
+            <Button color="blue" onClick={handleSaveManualRate}>Guardar Tipo de Cambio</Button>
+          </Group>
+        </Stack>
+      </Modal>
 
       {/* MODAL CATEGORÍA */}
       <Modal opened={catModalOpened} onClose={() => setCatModalOpened(false)} title={editingCatId ? 'Editar Categoría' : 'Nueva Categoría'} centered radius="md">
