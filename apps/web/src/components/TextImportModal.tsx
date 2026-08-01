@@ -54,6 +54,8 @@ export function TextImportModal({ opened, onClose, onImport, accounts }: TextImp
       type: r.type,
       amount: r.amountFormatted,
       color: r.color,
+      rawAmount: r.rawAmount,
+      currency: r.currency,
     }));
 
     onImport(formattedForState);

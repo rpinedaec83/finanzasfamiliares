@@ -199,36 +199,51 @@ export function App() {
     setModalType(null);
   };
 
+  // Migration fallback helpers for existing localStorage records without rawAmount/currency
+  const getRawAmount = (t: any): number => {
+    if (t.rawAmount !== undefined) return t.rawAmount;
+    if (!t.amount) return 0;
+    const val = parseFloat(t.amount.replace(/[^\d.-]/g, ''));
+    return isNaN(val) ? 0 : val;
+  };
+  
+  const getCurrency = (t: any): string => {
+    if (t.currency) return t.currency;
+    if (!t.amount) return 'PEN';
+    if (t.amount.includes('$') || t.amount.includes('USD')) return 'USD';
+    return 'PEN';
+  };
+
   // Dashboard dynamic calculations
   const ingresosSoles = transactions
-    .filter((t) => t.currency === 'PEN' && (t.rawAmount || 0) > 0)
-    .reduce((sum, t) => sum + (t.rawAmount || 0), 0);
+    .filter((t) => getCurrency(t) === 'PEN' && getRawAmount(t) > 0)
+    .reduce((sum, t) => sum + getRawAmount(t), 0);
 
   const gastosSoles = transactions
-    .filter((t) => t.currency === 'PEN' && (t.rawAmount || 0) < 0)
-    .reduce((sum, t) => sum + Math.abs(t.rawAmount || 0), 0);
+    .filter((t) => getCurrency(t) === 'PEN' && getRawAmount(t) < 0)
+    .reduce((sum, t) => sum + Math.abs(getRawAmount(t)), 0);
 
   const patrimonioSoles = accounts
     .filter((a) => a.currency === 'PEN')
     .reduce((sum, a) => sum + (a.rawBalance || 0), 0) + 
     transactions
-      .filter((t) => t.currency === 'PEN')
-      .reduce((sum, t) => sum + (t.rawAmount || 0), 0);
+      .filter((t) => getCurrency(t) === 'PEN')
+      .reduce((sum, t) => sum + getRawAmount(t), 0);
 
   const patrimonioDolares = accounts
     .filter((a) => a.currency === 'USD')
     .reduce((sum, a) => sum + (a.rawBalance || 0), 0) + 
     transactions
-      .filter((t) => t.currency === 'USD')
-      .reduce((sum, t) => sum + (t.rawAmount || 0), 0);
+      .filter((t) => getCurrency(t) === 'USD')
+      .reduce((sum, t) => sum + getRawAmount(t), 0);
 
   const totalBudgetLimit = 12000;
   const totalBudgetExecutedPct = Math.min(100, Math.round((gastosSoles / totalBudgetLimit) * 100));
   
   const dynamicBudgets = budgets.map((b) => {
     const executed = transactions
-      .filter((t) => t.currency === 'PEN' && (t.cat === b.cat || t.cat?.includes(b.cat)) && (t.rawAmount || 0) < 0)
-      .reduce((sum, t) => sum + Math.abs(t.rawAmount || 0), 0);
+      .filter((t) => getCurrency(t) === 'PEN' && (t.cat === b.cat || t.cat?.includes(b.cat)) && getRawAmount(t) < 0)
+      .reduce((sum, t) => sum + Math.abs(getRawAmount(t)), 0);
     return { ...b, executed };
   });
 
