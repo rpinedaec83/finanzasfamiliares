@@ -88,8 +88,8 @@ export function IntegrationsView() {
                 <Paper p="xs" radius="sm" style={{ background: '#0f172a' }}>
                   <Group justify="space-between">
                     <div>
-                      <Text size="sm" fw={600}>rpineda@x-codec.net</Text>
-                      <Text size="xs" c="dimmed">IMAP SSL (mail.x-codec.net:993) • Cifrado AES-256</Text>
+                      <Text size="sm" fw={600}>rpineda@x-codec.org</Text>
+                      <Text size="xs" c="dimmed">IMAP SSL (mail.x-codec.org:993) • Cifrado AES-256</Text>
                     </div>
                     <Badge color="green">Conectado</Badge>
                   </Group>

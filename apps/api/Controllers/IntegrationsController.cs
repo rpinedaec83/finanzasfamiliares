@@ -31,9 +31,9 @@ public class IntegrationsController : ControllerBase
         new EmailAccount
         {
             Id = Guid.NewGuid(),
-            EmailAddress = "rpineda@x-codec.net",
+            EmailAddress = "rpineda@x-codec.org",
             Provider = IntegrationProvider.CustomImap,
-            Host = "mail.x-codec.net",
+            Host = "mail.x-codec.org",
             Port = 993,
             UseTls = true,
             IsActive = true,

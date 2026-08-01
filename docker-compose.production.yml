@@ -48,7 +48,7 @@ services:
     restart: always
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.kipu-minio.rule=Host(`minio-finanzas.x-codec.net`)"
+      - "traefik.http.routers.kipu-minio.rule=Host(`minio-finanzas.x-codec.org`)"
       - "traefik.http.routers.kipu-minio.entrypoints=websecure"
       - "traefik.http.routers.kipu-minio.tls.certresolver=letsencrypt"
       - "traefik.http.services.kipu-minio.loadbalancer.server.port=9001"
@@ -80,7 +80,7 @@ services:
         condition: service_healthy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.kipu-api.rule=Host(`api-finanzas.x-codec.net`)"
+      - "traefik.http.routers.kipu-api.rule=Host(`api-finanzas.x-codec.org`)"
       - "traefik.http.routers.kipu-api.entrypoints=websecure"
       - "traefik.http.routers.kipu-api.tls.certresolver=letsencrypt"
       - "traefik.http.services.kipu-api.loadbalancer.server.port=8080"
@@ -133,7 +133,7 @@ services:
       - api
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.kipu-web.rule=Host(`finanzas.x-codec.net`)"
+      - "traefik.http.routers.kipu-web.rule=Host(`finanzas.x-codec.org`)"
       - "traefik.http.routers.kipu-web.entrypoints=websecure"
       - "traefik.http.routers.kipu-web.tls.certresolver=letsencrypt"
       - "traefik.http.services.kipu-web.loadbalancer.server.port=80"
