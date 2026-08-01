@@ -34,6 +34,36 @@ var connectionString =
     builder.Configuration["POSTGRES_CONNECTION_STRING"] ??
     "Host=localhost;Database=kipufinanzas;Username=postgres;Password=KipuFinanzasSecurePass123!";
 
+// Si estamos corriendo localmente fuera de Docker, pero la connection string apunta a 'Host=postgres',
+// la cambiamos a 'Host=localhost' para poder conectar al puerto expuesto de Docker.
+var isDocker = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
+if (!isDocker && connectionString.Contains("Host=postgres"))
+{
+    connectionString = connectionString.Replace("Host=postgres", "Host=localhost");
+}
+
+// Convertir formato de URI postgresql:// (usado por Dokploy/Railway/Heroku) al formato compatible con EF Core
+if (connectionString.StartsWith("postgresql://") || connectionString.StartsWith("postgres://"))
+{
+    try
+    {
+        var uri = new Uri(connectionString);
+        var userInfo = uri.UserInfo.Split(':');
+        var username = userInfo[0];
+        var password = userInfo.Length > 1 ? userInfo[1] : "";
+        var host = uri.Host;
+        var port = uri.Port > 0 ? uri.Port : 5432;
+        var database = uri.AbsolutePath.TrimStart('/');
+
+        // Construir string compatible con Npgsql
+        connectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};Include Error Detail=true;";
+    }
+    catch (Exception ex)
+    {
+        Log.Warning("[DB] Error al parsear URI de conexión Postgres: {Msg}", ex.Message);
+    }
+}
+
 Log.Information("[DB] Conectando a: {CS}", connectionString.Split(';')[0]); // Solo muestra el Host
 
 builder.Services.AddDbContext<KipuFinanzas.Api.Data.KipuDbContext>(options =>
