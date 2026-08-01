@@ -140,7 +140,7 @@ services:
 
 networks:
   kipu-network:
-    external: true
+    driver: bridge
 
 volumes:
   postgres_prod_data:
