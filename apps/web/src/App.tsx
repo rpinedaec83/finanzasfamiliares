@@ -12,6 +12,7 @@ import { ExchangesView } from './components/ExchangesView';
 import { BudgetsView } from './components/BudgetsView';
 import { GoalsView } from './components/GoalsView';
 import { CatalogsView } from './components/CatalogsView';
+import { InvestmentsView } from './components/InvestmentsView';
 import {
   MantineProvider,
   AppShell,
@@ -57,6 +58,7 @@ import {
   IconSend,
   IconCategory,
   IconEdit,
+  IconPigMoney,
 } from '@tabler/icons-react';
 
 export function App() {
@@ -96,6 +98,16 @@ export function App() {
   });
 
   const [creditCards, setCreditCards] = useState<any[]>([]);
+
+  const [deposits, setDeposits] = useState<any[]>(() => {
+    const saved = localStorage.getItem('kipu_deposits');
+    if (saved) { try { return JSON.parse(saved); } catch (e) {} }
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('kipu_deposits', JSON.stringify(deposits));
+  }, [deposits]);
 
   useEffect(() => {
     fetch('/api/creditcards')
@@ -194,6 +206,7 @@ export function App() {
     { label: 'Movimientos', icon: IconReceipt2 },
     { label: 'Cuentas Bancarias', icon: IconBuildingBank },
     { label: 'Tarjetas de Crédito', icon: IconCreditCard },
+    { label: 'Inversiones & Plazos', icon: IconPigMoney },
     { label: 'Transferencias', icon: IconArrowsExchange },
     { label: 'Cambio de Moneda', icon: IconCurrencyDollar },
     { label: 'Presupuestos', icon: IconChartPie },
@@ -418,6 +431,8 @@ export function App() {
               <AccountsView accounts={accounts} setAccounts={setAccounts} onTransfer={() => setModalType('transfer')} onExchange={() => setModalType('exchange')} />
             ) : activeTab === 'Tarjetas de Crédito' ? (
               <CardsView creditCards={creditCards} setCreditCards={setCreditCards} />
+            ) : activeTab === 'Inversiones & Plazos' ? (
+              <InvestmentsView deposits={deposits} setDeposits={setDeposits} />
             ) : activeTab === 'Transferencias' ? (
               <TransfersView onTransfer={() => setModalType('transfer')} />
             ) : activeTab === 'Cambio de Moneda' ? (
