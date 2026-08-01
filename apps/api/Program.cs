@@ -5,6 +5,19 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Cargar variables del archivo .env si existe (desarrollo local sin Docker)
+var envFile = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", ".env");
+if (File.Exists(envFile))
+{
+    foreach (var line in File.ReadAllLines(envFile))
+    {
+        if (string.IsNullOrWhiteSpace(line) || line.StartsWith('#')) continue;
+        var parts = line.Split('=', 2);
+        if (parts.Length == 2)
+            Environment.SetEnvironmentVariable(parts[0].Trim(), parts[1].Trim());
+    }
+}
+
 // Configurar Serilog
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -14,11 +27,15 @@ builder.Host.UseSerilog();
 
 // Add services to the container
 builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddOpenApi();
 
 // Configuración de Entity Framework Core con PostgreSQL
-var connectionString = builder.Configuration["POSTGRES_CONNECTION_STRING"] ?? "Host=localhost;Database=kipufinanzas;Username=postgres;Password=KipuFinanzasSecurePass123!";
+var connectionString = 
+    Environment.GetEnvironmentVariable("POSTGRES_CONNECTION_STRING") ??
+    builder.Configuration["POSTGRES_CONNECTION_STRING"] ??
+    "Host=localhost;Database=kipufinanzas;Username=postgres;Password=KipuFinanzasSecurePass123!";
+
+Log.Information("[DB] Conectando a: {CS}", connectionString.Split(';')[0]); // Solo muestra el Host
+
 builder.Services.AddDbContext<KipuFinanzas.Api.Data.KipuDbContext>(options =>
     options.UseNpgsql(connectionString));
 
@@ -54,13 +71,26 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Aplicar migraciones / crear tablas en PostgreSQL al iniciar
+// Sincronización automática del esquema de la BD al arrancar
 try
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<KipuDbContext>();
-    db.Database.EnsureCreated();
-    app.Logger.LogInformation("[DB] PostgreSQL conectado y esquema verificado.");
+    
+    // Si hay migraciones pendientes, las aplica; si no hay ninguna, crea el esquema desde cero
+    var pendingMigrations = await db.Database.GetPendingMigrationsAsync();
+    if (pendingMigrations.Any())
+    {
+        app.Logger.LogInformation("[DB] Aplicando {Count} migración(es) pendiente(s)...", pendingMigrations.Count());
+        await db.Database.MigrateAsync();
+    }
+    else
+    {
+        // Sin migraciones formales: crea el esquema si no existe (modo sin migraciones)
+        await db.Database.EnsureCreatedAsync();
+    }
+    
+    app.Logger.LogInformation("[DB] PostgreSQL conectado y esquema sincronizado.");
 }
 catch (Exception ex)
 {
@@ -68,11 +98,6 @@ catch (Exception ex)
 }
 
 app.UseCors("AllowFrontend");
-
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
