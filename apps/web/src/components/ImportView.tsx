@@ -23,7 +23,11 @@ import {
 } from '@tabler/icons-react';
 import { TextImportModal } from './TextImportModal';
 
-export function ImportView() {
+interface ImportViewProps {
+  onImportItems?: (items: any[]) => void;
+}
+
+export function ImportView({ onImportItems }: ImportViewProps) {
   const [selectedBank, setSelectedBank] = useState<string | null>('bcp');
   const [textModalOpened, setTextModalOpened] = useState(false);
   const [isUploaded, setIsUploaded] = useState(false);
@@ -68,7 +72,9 @@ export function ImportView() {
         opened={textModalOpened}
         onClose={() => setTextModalOpened(false)}
         onImport={(newItems) => {
-          alert(`¡${newItems.length} movimientos importados exitosamente!`);
+          if (onImportItems) {
+            onImportItems(newItems);
+          }
         }}
       />
 

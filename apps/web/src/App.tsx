@@ -68,6 +68,7 @@ export function App() {
 
   const handleImportItems = (newItems: any[]) => {
     setTransactions((prev) => [...newItems, ...prev]);
+    setActiveTab('Movimientos');
   };
 
   const [budgets] = useState([
@@ -252,7 +253,7 @@ export function App() {
             ) : activeTab === 'Metas de Ahorro' ? (
               <GoalsView />
             ) : activeTab === 'Importación & OCR' ? (
-              <ImportView />
+              <ImportView onImportItems={handleImportItems} />
             ) : activeTab === 'Alertas' ? (
               <AlertsView />
             ) : activeTab === 'Integraciones' ? (
