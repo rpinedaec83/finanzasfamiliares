@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ImportView } from './components/ImportView';
 import { AlertsView } from './components/AlertsView';
 import { IntegrationsView } from './components/IntegrationsView';
@@ -59,14 +59,37 @@ import {
 export function App() {
   const [activeTab, setActiveTab] = useState('Inicio');
 
-  // Interactive State
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [accounts, setAccounts] = useState<any[]>([
+  const INITIAL_ACCOUNTS = [
     { id: 1, bank: 'BCP', name: 'BCP Cuenta Sueldo Soles', cci: '002-191-002849182012-52', rawBalance: 4520.50, currency: 'PEN', color: 'blue' },
     { id: 2, bank: 'BBVA', name: 'BBVA Ahorro Dólares', cci: '011-182-000182948192-88', rawBalance: 12450.00, currency: 'USD', color: 'teal' },
     { id: 3, bank: 'Banco Falabella', name: 'Falabella Ahorro Soles', cci: '089-012-000918273645-12', rawBalance: 1890.00, currency: 'PEN', color: 'green' },
     { id: 4, bank: 'Efectivo', name: 'Billetera Efectivo Soles', cci: 'N/A', rawBalance: 350.00, currency: 'PEN', color: 'orange' },
-  ]);
+  ];
+
+  // Interactive Persistent State
+  const [transactions, setTransactions] = useState<any[]>(() => {
+    const saved = localStorage.getItem('kipu_transactions');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return [];
+  });
+
+  const [accounts, setAccounts] = useState<any[]>(() => {
+    const saved = localStorage.getItem('kipu_accounts');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return INITIAL_ACCOUNTS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('kipu_transactions', JSON.stringify(transactions));
+  }, [transactions]);
+
+  useEffect(() => {
+    localStorage.setItem('kipu_accounts', JSON.stringify(accounts));
+  }, [accounts]);
 
   const handleClearTransactions = () => {
     setTransactions([]);
