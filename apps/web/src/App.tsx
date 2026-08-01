@@ -744,12 +744,15 @@ export function App() {
                         <Badge color="teal">En progreso</Badge>
                       </Group>
                       {goals.map((g) => {
-                        const pct = Math.round((g.saved / g.target) * 100);
+                        const savedVal = g.savedAmount ?? g.saved ?? 0;
+                        const targetVal = g.targetAmount ?? g.target ?? 1;
+                        const pct = Math.round((savedVal / targetVal) * 100);
+                        const isPen = g.currency === 0 || g.currency === 'PEN';
                         return (
                           <div key={g.id} style={{ marginBottom: 12 }}>
                             <Text size="sm" fw={600} color="teal">{g.name}</Text>
                             <Group justify="space-between" mb={4}>
-                              <Text size="xs">Ahorrado: {g.currency === 'PEN' ? 'S/' : '$'} {g.saved.toLocaleString()}</Text>
+                              <Text size="xs">Ahorrado: {isPen ? 'S/' : '$'} {savedVal.toLocaleString()}</Text>
                               <Text size="xs" fw={700}>{pct}%</Text>
                             </Group>
                             <Progress value={pct} color="blue" size="md" radius="xl" />
