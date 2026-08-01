@@ -7,10 +7,15 @@ public class KipuDbContext : DbContext
 {
     private readonly Guid? _currentFamilyId;
 
-    public KipuDbContext(DbContextOptions<KipuDbContext> options, Guid? currentFamilyId = null)
+    public KipuDbContext(DbContextOptions<KipuDbContext> options, Microsoft.AspNetCore.Http.IHttpContextAccessor httpContextAccessor)
         : base(options)
     {
-        _currentFamilyId = currentFamilyId;
+        var user = httpContextAccessor.HttpContext?.User;
+        var familyClaim = user?.FindFirst("FamilyId")?.Value;
+        if (Guid.TryParse(familyClaim, out var familyId))
+        {
+            _currentFamilyId = familyId;
+        }
     }
 
     public DbSet<User> Users => Set<User>();

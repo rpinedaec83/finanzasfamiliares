@@ -13,6 +13,25 @@ import { BudgetsView } from './components/BudgetsView';
 import { GoalsView } from './components/GoalsView';
 import { CatalogsView } from './components/CatalogsView';
 import { InvestmentsView } from './components/InvestmentsView';
+import { LoginView } from './components/LoginView';
+
+// Interceptar fetch para inyectar token JWT automáticamente en todas las peticiones
+const originalFetch = window.fetch;
+window.fetch = async (input, init) => {
+  const token = localStorage.getItem('kipu_token');
+  if (token) {
+    init = init || {};
+    init.headers = init.headers || {};
+    if (init.headers instanceof Headers) {
+      init.headers.set('Authorization', `Bearer ${token}`);
+    } else if (Array.isArray(init.headers)) {
+      init.headers.push(['Authorization', `Bearer ${token}`]);
+    } else {
+      (init.headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+    }
+  }
+  return originalFetch(input, init);
+};
 import {
   MantineProvider,
   AppShell,
@@ -63,9 +82,45 @@ import {
 } from '@tabler/icons-react';
 
 export function App() {
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('kipu_token'));
+  const [user, setUser] = useState<any>(() => {
+    const saved = localStorage.getItem('kipu_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [family, setFamily] = useState<any>(() => {
+    const saved = localStorage.getItem('kipu_family');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const handleAuthSuccess = (newToken: string, newUser: any, newFamily: any) => {
+    localStorage.setItem('kipu_token', newToken);
+    localStorage.setItem('kipu_user', JSON.stringify(newUser));
+    localStorage.setItem('kipu_family', JSON.stringify(newFamily));
+    setToken(newToken);
+    setUser(newUser);
+    setFamily(newFamily);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('kipu_token');
+    localStorage.removeItem('kipu_user');
+    localStorage.removeItem('kipu_family');
+    setToken(null);
+    setUser(null);
+    setFamily(null);
+  };
+
   const [activeTab, setActiveTab] = useState('Inicio');
   const [dashboardCurrency, setDashboardCurrency] = useState<'PEN' | 'USD'>('PEN');
   const [exchangeRates, setExchangeRates] = useState<any[]>([]);
+
+  if (!token) {
+    return (
+      <MantineProvider defaultColorScheme="dark">
+        <LoginView onAuthSuccess={handleAuthSuccess} />
+      </MantineProvider>
+    );
+  }
 
   useEffect(() => {
     fetch('/api/catalogs/exchange-rates')
@@ -423,7 +478,7 @@ export function App() {
                 </Badge>
               )}
               <Badge variant="light" color="teal" size="lg" radius="sm">
-                Familia: Pineda López
+                Familia: {family?.name || 'Cargando...'}
               </Badge>
               <ActionIcon variant="light" color="blue" size="lg" radius="md">
                 <IconBell size={20} />
@@ -436,34 +491,56 @@ export function App() {
         </AppShell.Header>
 
         <AppShell.Navbar p="md" style={{ background: '#0f172a', borderColor: '#334155' }}>
-          <Stack gap="xs">
-            <Text size="xs" fw={700} c="dimmed" tt="uppercase" px="sm">
-              Menú Principal
-            </Text>
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.label;
-              return (
-                <UnstyledButton
-                  key={item.label}
-                  onClick={() => setActiveTab(item.label)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '10px 14px',
-                    borderRadius: 8,
-                    background: isActive ? '#1e293b' : 'transparent',
-                    color: isActive ? '#38bdf8' : '#94a3b8',
-                    fontWeight: isActive ? 600 : 400,
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  <Icon size={20} />
-                  <Text size="sm">{item.label}</Text>
-                </UnstyledButton>
-              );
-            })}
+          <Stack justify="space-between" h="100%" gap="xs">
+            <Stack gap="xs" style={{ overflowY: 'auto', flex: 1 }}>
+              <Text size="xs" fw={700} c="dimmed" tt="uppercase" px="sm">
+                Menú Principal
+              </Text>
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.label;
+                return (
+                  <UnstyledButton
+                    key={item.label}
+                    onClick={() => setActiveTab(item.label)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: '10px 14px',
+                      borderRadius: 8,
+                      background: isActive ? '#1e293b' : 'transparent',
+                      color: isActive ? '#38bdf8' : '#94a3b8',
+                      fontWeight: isActive ? 600 : 400,
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    <Icon size={20} />
+                    <Text size="sm">{item.label}</Text>
+                  </UnstyledButton>
+                );
+              })}
+            </Stack>
+
+            {/* Bottom Profile and Logout Section */}
+            <Stack gap="xs" style={{ borderTop: '1px solid #334155', paddingTop: '15px' }}>
+              <Group gap="xs" px="xs" wrap="nowrap">
+                <div style={{
+                  width: '36px', height: '36px', borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #6366f1 0%, #14b8a6 100%)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, flexShrink: 0
+                }}>
+                  {user?.fullName?.substring(0, 1).toUpperCase() || 'U'}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <Text size="sm" fw={600} style={{ color: '#f8fafc' }} truncate>{user?.fullName || 'Usuario'}</Text>
+                  <Text size="xs" c="dimmed" truncate>{user?.email || ''}</Text>
+                </div>
+              </Group>
+              <Button color="red" variant="subtle" size="xs" onClick={handleLogout} fullWidth>
+                Cerrar Sesión
+              </Button>
+            </Stack>
           </Stack>
         </AppShell.Navbar>
 

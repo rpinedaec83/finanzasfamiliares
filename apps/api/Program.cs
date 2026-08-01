@@ -26,7 +26,13 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // Add services to the container
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    var policy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+    options.Filters.Add(new Microsoft.AspNetCore.Mvc.Authorization.AuthorizeFilter(policy));
+});
 
 // Configuración de Entity Framework Core con PostgreSQL
 var connectionString = 
@@ -66,11 +72,36 @@ if (connectionString.StartsWith("postgresql://") || connectionString.StartsWith(
 
 Log.Information("[DB] Conectando a: {CS}", connectionString.Split(';')[0]); // Solo muestra el Host
 
+builder.Services.AddHttpContextAccessor();
+
 builder.Services.AddDbContext<KipuFinanzas.Api.Data.KipuDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+// Configuración de Seguridad y JWT
+var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET") ?? "SuperSecretKeyKipuFinanzasMin64CharsLengthMustBeRandomAndSecure123456!";
+var key = System.Text.Encoding.ASCII.GetBytes(jwtSecret);
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false;
+    options.SaveToken = true;
+    options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(key),
+        ValidateIssuer = false,
+        ValidateAudience = false,
+        ClockSkew = TimeSpan.Zero
+    };
+});
+
 // Servicios de Dominio Financiero & Seguridad
-builder.Services.AddSingleton<IAuthService>(new AuthService("SuperSecretKeyKipuFinanzasMin64CharsLengthMustBeRandomAndSecure123456!"));
+builder.Services.AddSingleton<IAuthService>(new AuthService(jwtSecret));
 builder.Services.AddScoped<IFinancialService, FinancialService>();
 builder.Services.AddScoped<ISunatExchangeRateService, SunatExchangeRateService>();
 builder.Services.AddScoped<IDeduplicationEngine, DeduplicationEngine>();
@@ -123,6 +154,7 @@ app.UseDefaultFiles();
 app.UseStaticFiles();
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
