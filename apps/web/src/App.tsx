@@ -55,6 +55,7 @@ import {
   NumberInput,
   Select,
   SegmentedControl,
+  Tooltip,
 } from '@mantine/core';
 import {
   IconLayoutDashboard,
@@ -78,7 +79,6 @@ import {
   IconCategory,
   IconEdit,
   IconPigMoney,
-  IconDatabase,
 } from '@tabler/icons-react';
 
 export function App() {
@@ -463,19 +463,22 @@ export function App() {
             </Group>
 
             <Group gap="sm">
-              {/* DB Status Indicator */}
+              {/* DB Status Indicator (Semáforo discreto) */}
               {dbStatus && (
-                <Badge
-                  variant="dot"
-                  color={dbStatus.connected ? 'teal' : 'red'}
-                  size="lg"
-                  radius="sm"
-                  style={{ cursor: 'default' }}
-                  title={dbStatus.message}
-                  leftSection={<IconDatabase size={12} />}
-                >
-                  DB: {dbStatus.connected ? 'PostgreSQL Online' : 'Modo In-Memory'}
-                </Badge>
+                <Tooltip label={dbStatus.message} position="bottom" withArrow>
+                  <div
+                    style={{
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '50%',
+                      backgroundColor: dbStatus.connected ? '#10b981' : '#ef4444',
+                      boxShadow: dbStatus.connected 
+                        ? '0 0 8px rgba(16, 185, 129, 0.6)' 
+                        : '0 0 8px rgba(239, 68, 68, 0.6)',
+                      cursor: 'help',
+                    }}
+                  />
+                </Tooltip>
               )}
               <Badge variant="light" color="teal" size="lg" radius="sm">
                 Familia: {family?.name || 'Cargando...'}
