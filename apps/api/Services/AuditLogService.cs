@@ -15,7 +15,7 @@ public class AuditLogService : IAuditLogService
         new AuditLog
         {
             Id = Guid.NewGuid(),
-            UserEmail = "rpineda@x-codec.org",
+            UserEmail = "rpineda@x-codec.net",
             Action = "LOGIN",
             EntityName = "User",
             EntityId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
@@ -25,7 +25,7 @@ public class AuditLogService : IAuditLogService
         new AuditLog
         {
             Id = Guid.NewGuid(),
-            UserEmail = "rpineda@x-codec.org",
+            UserEmail = "rpineda@x-codec.net",
             Action = "CURRENCY_EXCHANGE",
             EntityName = "CurrencyExchangeOperation",
             EntityId = Guid.NewGuid().ToString(),
@@ -35,7 +35,7 @@ public class AuditLogService : IAuditLogService
         new AuditLog
         {
             Id = Guid.NewGuid(),
-            UserEmail = "rpineda@x-codec.org",
+            UserEmail = "rpineda@x-codec.net",
             Action = "BANK_IMPORT",
             EntityName = "DocumentImport",
             EntityId = Guid.NewGuid().ToString(),

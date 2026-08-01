@@ -14,7 +14,7 @@ export function AuditView() {
   const [logs] = useState([
     {
       id: 1,
-      user: 'rpineda@x-codec.org',
+      user: 'rpineda@x-codec.net',
       action: 'BANK_IMPORT',
       entity: 'DocumentImport',
       details: 'Importación de PDF BCP Soles con cuadre de saldos 100%.',
@@ -23,7 +23,7 @@ export function AuditView() {
     },
     {
       id: 2,
-      user: 'rpineda@x-codec.org',
+      user: 'rpineda@x-codec.net',
       action: 'CURRENCY_EXCHANGE',
       entity: 'CurrencyExchangeOperation',
       details: 'Venta de $1,000 USD a TC efectivo S/ 3.755 (Rextie).',
@@ -32,7 +32,7 @@ export function AuditView() {
     },
     {
       id: 3,
-      user: 'rpineda@x-codec.org',
+      user: 'rpineda@x-codec.net',
       action: 'LOGIN',
       entity: 'User',
       details: 'Inicio de sesión exitoso con JWT.',
