@@ -140,6 +140,8 @@ export function App() {
 
   const calculatedRate = Number(deliveredUSD) > 0 ? (Number(receivedPEN) / Number(deliveredUSD)).toFixed(4) : '0.0000';
 
+  const accountNames = accounts.map((a: any) => a.name);
+
   const [editTxId, setEditTxId] = useState<number | null>(null);
   const [editTxType, setEditTxType] = useState<string>('Gasto');
   const [editTxCat, setEditTxCat] = useState<string>('Otros');
@@ -654,7 +656,7 @@ export function App() {
             <TextInput label="Comercio / Descripción" placeholder="ej. Wong, Primax, Netflix" value={expenseDesc} onChange={(e) => setExpenseDesc(e.target.value)} required />
             <Select label="Categoría" data={['Supermercado', 'Combustible & Transporte', 'Restaurantes', 'Fotografía & Tecnología', 'Streaming', 'Salud', 'Educación']} value={expenseCat} onChange={setExpenseCat} required />
             <NumberInput label="Monto en Soles (S/)" placeholder="0.00" value={expenseAmount} onChange={setExpenseAmount} min={0} decimalScale={2} required />
-            <Select label="Cuenta o Tarjeta de Origen" data={['BCP Cuenta Sueldo PEN', 'Interbank Visa Signature', 'BBVA Ahorro Soles', 'Efectivo Soles']} defaultValue="BCP Cuenta Sueldo PEN" />
+            <Select label="Cuenta o Tarjeta de Origen" data={accountNames} defaultValue={accountNames[0]} />
             <Button color="teal" fullWidth onClick={handleAddExpense} leftSection={<IconSend size={18} />}>
               Guardar Gasto
             </Button>
@@ -664,8 +666,8 @@ export function App() {
         {/* MODAL 2: TRANSFERENCIA PROPIA */}
         <Modal opened={modalType === 'transfer'} onClose={() => setModalType(null)} title="Transferir entre Cuentas Propias" centered radius="md">
           <Stack gap="md">
-            <Select label="Cuenta Origen" data={['BCP Cuenta Sueldo PEN', 'BBVA Cuenta Ahorro USD', 'Efectivo Soles']} defaultValue="BCP Cuenta Sueldo PEN" />
-            <Select label="Cuenta Destino" data={['Interbank Cuenta Ahorro PEN', 'BCP Cuenta Ahorro USD', 'Efectivo Soles']} defaultValue="Interbank Cuenta Ahorro PEN" />
+            <Select label="Cuenta Origen" data={accountNames} defaultValue={accountNames[0]} />
+            <Select label="Cuenta Destino" data={accountNames} defaultValue={accountNames.length > 1 ? accountNames[1] : accountNames[0]} />
             <NumberInput label="Monto a Transferir" placeholder="0.00" value={transferAmount} onChange={setTransferAmount} min={0} decimalScale={2} required />
             <NumberInput label="Comisión Bancaria (Registrado como único Gasto)" placeholder="0.00" value={transferFee} onChange={setTransferFee} min={0} decimalScale={2} />
             <Text size="xs" c="dimmed">
@@ -710,16 +712,16 @@ export function App() {
               <>
                 <Select 
                   label="Cuenta Origen" 
-                  data={['BCP Cuenta Sueldo PEN', 'Interbank Visa Signature', 'BBVA Ahorro Soles', 'Efectivo Soles', 'Interbank Cuenta Ahorro PEN', 'BCP Cuenta Ahorro USD']} 
+                  data={accountNames} 
                   value={editTxOrigin}
-                  onChange={(val) => setEditTxOrigin(val || 'BCP Cuenta Sueldo PEN')} 
+                  onChange={(val) => setEditTxOrigin(val || accountNames[0])} 
                   required
                 />
                 <Select 
                   label="Cuenta Destino" 
-                  data={['BCP Cuenta Sueldo PEN', 'Interbank Visa Signature', 'BBVA Ahorro Soles', 'Efectivo Soles', 'Interbank Cuenta Ahorro PEN', 'BCP Cuenta Ahorro USD']} 
+                  data={accountNames} 
                   value={editTxDest}
-                  onChange={(val) => setEditTxDest(val || 'Interbank Cuenta Ahorro PEN')} 
+                  onChange={(val) => setEditTxDest(val || accountNames[0])} 
                   required
                 />
               </>

@@ -13,11 +13,33 @@ export interface ParsedTextTransaction {
   isDuplicate?: boolean;
 }
 
-export function parseBankText(rawText: string, defaultAccount: string = 'Interbank USD'): ParsedTextTransaction[] {
-  const lines = rawText.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
-  const results: ParsedTextTransaction[] = [];
-
+function parseDateText(line: string): string | null {
   const dateRegex = /^(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4})$/;
+  if (dateRegex.test(line)) return line;
+
+  const monthRegex = /^(\d{1,2})\s+(Ene|Feb|Mar|Abr|May|Jun|Jul|Ago|Sep|Oct|Nov|Dic)[a-z]*$/i;
+  const match = line.match(monthRegex);
+  if (match) {
+    const day = match[1].padStart(2, '0');
+    const monthStr = match[2].toLowerCase();
+    const months: Record<string, string> = { ene: '01', feb: '02', mar: '03', abr: '04', may: '05', jun: '06', jul: '07', ago: '08', sep: '09', oct: '10', nov: '11', dic: '12' };
+    const month = months[monthStr];
+    return `${day}/${month}/2026`;
+  }
+  
+  return null;
+}
+
+export function parseBankText(rawText: string, defaultAccount: string = 'Interbank USD'): ParsedTextTransaction[] {
+  const lines = rawText.split('\n')
+    .map((l) => l.trim())
+    .filter((l) => 
+      l.length > 0 && 
+      !['angle-down', 'angle-up', 'fecha', 'descripción', 'monto'].includes(l.toLowerCase()) && 
+      l.length > 1
+    );
+
+  const results: ParsedTextTransaction[] = [];
   const amountRegex = /^(US\$|S\/|\$|PEN|USD)?\s*(-?\s*[\d,]+\.?\d*)$/i;
 
   let currentDate = '';
@@ -26,12 +48,9 @@ export function parseBankText(rawText: string, defaultAccount: string = 'Interba
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    if (line === 'FECHA' || line === 'DESCRIPCIÓN' || line === 'MONTO') {
-      continue;
-    }
-
-    if (dateRegex.test(line)) {
-      currentDate = line;
+    const parsedDate = parseDateText(line);
+    if (parsedDate) {
+      currentDate = parsedDate;
       continue;
     }
 
@@ -91,13 +110,25 @@ function classifyDescription(desc: string, isExpense: boolean): { normalizedDesc
   if (upper.includes('OPENAI') || upper.includes('CHATGPT')) {
     return { normalizedDesc: 'OpenAI ChatGPT Subscription', category: 'Tecnología & IA', type: 'Gasto Fijo' };
   }
-  if (upper.includes('TRANSF INMEDIATA') || upper.includes('TRANSFERENCIA')) {
+  if (upper.includes('TRANSF INMEDIATA') || upper.includes('TRANSFERENCIA') || upper.includes('TRANSF.BCO') || upper.includes('TRAS A :')) {
     return { normalizedDesc: desc, category: 'Transferencia Inmediata', type: 'Transferencia' };
   }
-  if (upper.includes('COM. Y GASTOS') || upper.includes('ITF') || upper.includes('CARGO')) {
+  if (upper.includes('PAG.T.PROP.VISA') || upper.includes('PAGO DE TARJETA')) {
+    return { normalizedDesc: desc, category: 'Pago de Tarjeta', type: 'Transferencia' };
+  }
+  if (upper.includes('DEP.PLAZ') || upper.includes('DEPOSITO PLAZO')) {
+    return { normalizedDesc: desc, category: 'Depósito a Plazo Fijo', type: 'Transferencia' };
+  }
+  if (upper.startsWith('YC-') || upper.startsWith('YP ') || upper.startsWith('YAPE')) {
+    return { normalizedDesc: desc, category: isExpense ? 'Pagos Yape' : 'Ingresos Yape', type: isExpense ? 'Gasto' : 'Ingreso' };
+  }
+  if (upper.includes('ABON PLIN') || upper.includes('PLIN')) {
+    return { normalizedDesc: desc, category: isExpense ? 'Pagos Plin' : 'Ingresos Plin', type: isExpense ? 'Gasto' : 'Ingreso' };
+  }
+  if (upper.includes('COM. Y GASTOS') || upper.includes('ITF') || upper.includes('CARGO') || upper.includes('COMISION')) {
     return { normalizedDesc: desc, category: 'Comisiones & Impuestos', type: 'Comisión Bancaria' };
   }
-  if (upper.includes('O.PAGO REC EXT') || upper.includes('ABONO') || upper.includes('SUELDO')) {
+  if (upper.includes('O.PAGO REC EXT') || upper.includes('ABONO') || upper.includes('SUELDO') || upper.includes('INGRESO')) {
     return { normalizedDesc: desc, category: 'Ingreso / Pago Recibido', type: 'Ingreso' };
   }
 
