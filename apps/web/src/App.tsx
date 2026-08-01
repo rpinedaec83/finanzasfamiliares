@@ -4,6 +4,13 @@ import { AlertsView } from './components/AlertsView';
 import { IntegrationsView } from './components/IntegrationsView';
 import { AiAssistantView } from './components/AiAssistantView';
 import { AuditView } from './components/AuditView';
+import { TransactionsView } from './components/TransactionsView';
+import { AccountsView } from './components/AccountsView';
+import { CardsView } from './components/CardsView';
+import { TransfersView } from './components/TransfersView';
+import { ExchangesView } from './components/ExchangesView';
+import { BudgetsView } from './components/BudgetsView';
+import { GoalsView } from './components/GoalsView';
 import {
   MantineProvider,
   AppShell,
@@ -227,7 +234,21 @@ export function App() {
 
         <AppShell.Main style={{ background: '#090d16', minHeight: 'calc(100vh - 70px)' }}>
           <Container fluid p="md">
-            {activeTab === 'Importación & OCR' ? (
+            {activeTab === 'Movimientos' ? (
+              <TransactionsView transactions={transactions} onNewExpense={() => setModalType('expense')} />
+            ) : activeTab === 'Cuentas Bancarias' ? (
+              <AccountsView onTransfer={() => setModalType('transfer')} onExchange={() => setModalType('exchange')} />
+            ) : activeTab === 'Tarjetas de Crédito' ? (
+              <CardsView />
+            ) : activeTab === 'Transferencias' ? (
+              <TransfersView onTransfer={() => setModalType('transfer')} />
+            ) : activeTab === 'Cambio de Moneda' ? (
+              <ExchangesView onExchange={() => setModalType('exchange')} />
+            ) : activeTab === 'Presupuestos' ? (
+              <BudgetsView />
+            ) : activeTab === 'Metas de Ahorro' ? (
+              <GoalsView />
+            ) : activeTab === 'Importación & OCR' ? (
               <ImportView />
             ) : activeTab === 'Alertas' ? (
               <AlertsView />
