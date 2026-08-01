@@ -108,13 +108,19 @@ export function CatalogsView() {
 
   const [exchangeRates, setExchangeRates] = useState<ExchangeRateItem[]>([]);
   const [loadingSync, setLoadingSync] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<string>('8'); // Agosto por defecto en 2026
+  const [selectedYear, setSelectedYear] = useState<string>('2026');
 
-  useEffect(() => {
-    fetch('/api/catalogs/exchange-rates')
+  const fetchExchangeRates = () => {
+    fetch(`/api/catalogs/exchange-rates?month=${selectedMonth}&year=${selectedYear}`)
       .then(res => res.json())
       .then(data => setExchangeRates(data))
       .catch(e => console.error(e));
-  }, []);
+  };
+
+  useEffect(() => {
+    fetchExchangeRates();
+  }, [selectedMonth, selectedYear]);
 
   const handleSyncSUNAT = async () => {
     setLoadingSync(true);
@@ -122,13 +128,11 @@ export function CatalogsView() {
       const res = await fetch('/api/catalogs/sync-exchange-rates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ month: 8, year: 2026 })
+        body: JSON.stringify({ month: Number(selectedMonth), year: Number(selectedYear) })
       });
       if (res.ok) {
-        const fetchRes = await fetch('/api/catalogs/exchange-rates');
-        const data = await fetchRes.json();
-        setExchangeRates(data);
-        alert('Tipos de cambio de SUNAT sincronizados exitosamente.');
+        fetchExchangeRates();
+        alert(`Tipos de cambio para ${selectedMonth}/${selectedYear} sincronizados exitosamente.`);
       }
     } catch (e) {
       console.error(e);
@@ -405,11 +409,42 @@ export function CatalogsView() {
           </Card>
         </Tabs.Panel>
 
-        {/* TAB 4: TIPOS DE CAMBIO */}
         <Tabs.Panel value="exchangerates" pt="md">
           <Card p="md" radius="md" style={{ background: '#1e293b', border: '1px solid #334155' }}>
-            <Group justify="space-between" mb="md">
-              <Text fw={700} style={{ color: '#f8fafc' }}>Historial del Tipo de Cambio (Agosto 2026)</Text>
+            <Group justify="space-between" mb="md" align="flex-end">
+              <Group align="flex-end">
+                <Select
+                  label="Mes"
+                  data={[
+                    { value: '1', label: 'Enero' },
+                    { value: '2', label: 'Febrero' },
+                    { value: '3', label: 'Marzo' },
+                    { value: '4', label: 'Abril' },
+                    { value: '5', label: 'Mayo' },
+                    { value: '6', label: 'Junio' },
+                    { value: '7', label: 'Julio' },
+                    { value: '8', label: 'Agosto' },
+                    { value: '9', label: 'Septiembre' },
+                    { value: '10', label: 'Octubre' },
+                    { value: '11', label: 'Noviembre' },
+                    { value: '12', label: 'Diciembre' },
+                  ]}
+                  value={selectedMonth}
+                  onChange={(v) => setSelectedMonth(v || '8')}
+                  style={{ width: 140 }}
+                />
+                <Select
+                  label="Año"
+                  data={[
+                    { value: '2024', label: '2024' },
+                    { value: '2025', label: '2025' },
+                    { value: '2026', label: '2026' },
+                  ]}
+                  value={selectedYear}
+                  onChange={(v) => setSelectedYear(v || '2026')}
+                  style={{ width: 100 }}
+                />
+              </Group>
               <Button color="teal" leftSection={<IconDownload size={16} />} loading={loadingSync} onClick={handleSyncSUNAT}>
                 Sincronizar SUNAT
               </Button>

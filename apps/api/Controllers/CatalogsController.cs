@@ -101,19 +101,29 @@ public class CatalogsController : ControllerBase
 
     // 3. EXCHANGE RATES
     [HttpGet("exchange-rates")]
-    public async Task<IActionResult> GetExchangeRates()
+    public async Task<IActionResult> GetExchangeRates([FromQuery] int? month = null, [FromQuery] int? year = null)
     {
+        int targetMonth = month ?? DateTime.UtcNow.Month;
+        int targetYear = year ?? DateTime.UtcNow.Year;
+
         if (_context != null)
         {
             try
             {
-                var rates = await _context.ExchangeRates.OrderBy(x => x.Date).ToListAsync();
-                if (rates.Any()) return Ok(rates);
+                var rates = await _context.ExchangeRates
+                    .Where(x => x.Date.Year == targetYear && x.Date.Month == targetMonth)
+                    .OrderBy(x => x.Date)
+                    .ToListAsync();
+                return Ok(rates);
             }
             catch { }
         }
         
-        return Ok(InMemoryExchangeRates.OrderBy(x => x.Date).ToList());
+        var inMem = InMemoryExchangeRates
+            .Where(x => x.Date.Year == targetYear && x.Date.Month == targetMonth)
+            .OrderBy(x => x.Date)
+            .ToList();
+        return Ok(inMem);
     }
 
     [HttpPost("sync-exchange-rates")]
