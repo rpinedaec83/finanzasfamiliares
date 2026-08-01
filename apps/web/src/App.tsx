@@ -114,13 +114,7 @@ export function App() {
   const [dashboardCurrency, setDashboardCurrency] = useState<'PEN' | 'USD'>('PEN');
   const [exchangeRates, setExchangeRates] = useState<any[]>([]);
 
-  if (!token) {
-    return (
-      <MantineProvider defaultColorScheme="dark">
-        <LoginView onAuthSuccess={handleAuthSuccess} />
-      </MantineProvider>
-    );
-  }
+
 
   useEffect(() => {
     fetch('/api/catalogs/exchange-rates')
@@ -438,6 +432,14 @@ export function App() {
       ? `S/ ${val.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
       : `$ ${val.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
   };
+
+  if (!token) {
+    return (
+      <MantineProvider defaultColorScheme="dark">
+        <LoginView onAuthSuccess={handleAuthSuccess} />
+      </MantineProvider>
+    );
+  }
 
   return (
     <MantineProvider defaultColorScheme="dark">
