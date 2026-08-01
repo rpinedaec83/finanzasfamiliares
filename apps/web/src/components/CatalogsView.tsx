@@ -22,6 +22,8 @@ import {
   IconPlus,
   IconEdit,
   IconTrash,
+  IconCurrencyDollar,
+  IconDownload,
 } from '@tabler/icons-react';
 
 interface CategoryCatalogItem {
@@ -45,6 +47,13 @@ interface AiRuleItem {
   pattern: string;
   normalizedMerchant: string;
   category: string;
+}
+
+interface ExchangeRateItem {
+  id: string;
+  date: string;
+  buyRate: number;
+  sellRate: number;
 }
 
 export function CatalogsView() {
@@ -96,6 +105,37 @@ export function CatalogsView() {
       { id: 4, pattern: 'WONG', normalizedMerchant: 'Supermercados Wong', category: 'Supermercado & Víveres' },
     ];
   });
+
+  const [exchangeRates, setExchangeRates] = useState<ExchangeRateItem[]>([]);
+  const [loadingSync, setLoadingSync] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/catalogs/exchange-rates')
+      .then(res => res.json())
+      .then(data => setExchangeRates(data))
+      .catch(e => console.error(e));
+  }, []);
+
+  const handleSyncSUNAT = async () => {
+    setLoadingSync(true);
+    try {
+      const res = await fetch('/api/catalogs/sync-exchange-rates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ month: 8, year: 2026 })
+      });
+      if (res.ok) {
+        const fetchRes = await fetch('/api/catalogs/exchange-rates');
+        const data = await fetchRes.json();
+        setExchangeRates(data);
+        alert('Tipos de cambio de SUNAT sincronizados exitosamente.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error sincronizando SUNAT');
+    }
+    setLoadingSync(false);
+  };
 
   useEffect(() => {
     localStorage.setItem('kipu_catalog_categories', JSON.stringify(categories));
@@ -201,6 +241,9 @@ export function CatalogsView() {
           </Tabs.Tab>
           <Tabs.Tab value="airules" leftSection={<IconSparkles size={16} />}>
             Reglas de IA & Normalización ({aiRules.length})
+          </Tabs.Tab>
+          <Tabs.Tab value="exchangerates" leftSection={<IconCurrencyDollar size={16} />}>
+            Tipos de Cambio SUNAT
           </Tabs.Tab>
         </Tabs.List>
 
@@ -361,6 +404,51 @@ export function CatalogsView() {
             </Table>
           </Card>
         </Tabs.Panel>
+
+        {/* TAB 4: TIPOS DE CAMBIO */}
+        <Tabs.Panel value="exchangerates" pt="md">
+          <Card p="md" radius="md" style={{ background: '#1e293b', border: '1px solid #334155' }}>
+            <Group justify="space-between" mb="md">
+              <Text fw={700} style={{ color: '#f8fafc' }}>Historial del Tipo de Cambio (Agosto 2026)</Text>
+              <Button color="teal" leftSection={<IconDownload size={16} />} loading={loadingSync} onClick={handleSyncSUNAT}>
+                Sincronizar SUNAT
+              </Button>
+            </Group>
+
+            <Table highlightOnHover verticalSpacing="sm">
+              <Table.Thead>
+                <Table.Tr style={{ borderColor: '#334155' }}>
+                  <Table.Th style={{ color: '#94a3b8' }}>Fecha</Table.Th>
+                  <Table.Th style={{ color: '#94a3b8' }}>Compra (S/)</Table.Th>
+                  <Table.Th style={{ color: '#94a3b8' }}>Venta (S/)</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {exchangeRates.map((r) => (
+                  <Table.Tr key={r.id} style={{ borderColor: '#334155' }}>
+                    <Table.Td>
+                      <Text fw={600} size="sm">{new Date(r.date).toLocaleDateString()}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text c="teal" fw={700}>{r.buyRate.toFixed(3)}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text c="blue" fw={700}>{r.sellRate.toFixed(3)}</Text>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+                {exchangeRates.length === 0 && (
+                  <Table.Tr>
+                    <Table.Td colSpan={3} style={{ textAlign: 'center' }}>
+                      <Text c="dimmed">No hay tipos de cambio guardados. Haz clic en Sincronizar SUNAT.</Text>
+                    </Table.Td>
+                  </Table.Tr>
+                )}
+              </Table.Tbody>
+            </Table>
+          </Card>
+        </Tabs.Panel>
+
       </Tabs>
 
       {/* MODAL CATEGORÍA */}

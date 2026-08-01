@@ -60,6 +60,15 @@ import {
 
 export function App() {
   const [activeTab, setActiveTab] = useState('Inicio');
+  const [dashboardCurrency, setDashboardCurrency] = useState<'PEN' | 'USD'>('PEN');
+  const [exchangeRates, setExchangeRates] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch('/api/catalogs/exchange-rates')
+      .then(res => res.json())
+      .then(data => setExchangeRates(data))
+      .catch(e => console.error(e));
+  }, []);
 
   const INITIAL_ACCOUNTS = [
     { id: 1, bank: 'BCP', name: 'BCP Cuenta Sueldo Soles', cci: '002-191-002849182012-52', rawBalance: 4520.50, currency: 'PEN', color: 'blue' },
@@ -214,38 +223,73 @@ export function App() {
     return 'PEN';
   };
 
-  // Dashboard dynamic calculations
-  const ingresosSoles = transactions
-    .filter((t) => getCurrency(t) === 'PEN' && getRawAmount(t) > 0)
-    .reduce((sum, t) => sum + getRawAmount(t), 0);
+  const getLatestRate = () => exchangeRates.length > 0 ? exchangeRates[exchangeRates.length - 1] : { buyRate: 3.75, sellRate: 3.80 };
+  
+  const convertAmount = (amount: number, fromCurrency: string, dateStr: string): number => {
+    if (fromCurrency === dashboardCurrency) return amount;
+    let rate = getLatestRate();
+    if (exchangeRates.length > 0 && dateStr) {
+       let matchDate = new Date();
+       if (dateStr.includes('/')) {
+          const [d, m, y] = dateStr.split('/');
+          matchDate = new Date(`${y}-${m}-${d}T00:00:00Z`);
+       } else {
+          matchDate = new Date(dateStr);
+       }
+       const found = exchangeRates.find(r => {
+          const rd = new Date(r.date);
+          return rd.getFullYear() === matchDate.getFullYear() && rd.getMonth() === matchDate.getMonth() && rd.getDate() === matchDate.getDate();
+       });
+       if (found) rate = found;
+    }
 
-  const gastosSoles = transactions
-    .filter((t) => getCurrency(t) === 'PEN' && getRawAmount(t) < 0)
-    .reduce((sum, t) => sum + Math.abs(getRawAmount(t)), 0);
+    if (fromCurrency === 'USD' && dashboardCurrency === 'PEN') return amount * rate.buyRate;
+    if (fromCurrency === 'PEN' && dashboardCurrency === 'USD') return amount / rate.sellRate;
+    return amount;
+  };
 
-  const patrimonioSoles = accounts
-    .filter((a) => a.currency === 'PEN')
-    .reduce((sum, a) => sum + (a.rawBalance || 0), 0) + 
-    transactions
-      .filter((t) => getCurrency(t) === 'PEN')
-      .reduce((sum, t) => sum + getRawAmount(t), 0);
+  const convertCurrentBalance = (amount: number, fromCurrency: string): number => {
+     if (fromCurrency === dashboardCurrency) return amount;
+     const rate = getLatestRate();
+     if (fromCurrency === 'USD' && dashboardCurrency === 'PEN') return amount * rate.buyRate;
+     if (fromCurrency === 'PEN' && dashboardCurrency === 'USD') return amount / rate.sellRate;
+     return amount;
+  };
 
-  const patrimonioDolares = accounts
-    .filter((a) => a.currency === 'USD')
-    .reduce((sum, a) => sum + (a.rawBalance || 0), 0) + 
-    transactions
-      .filter((t) => getCurrency(t) === 'USD')
-      .reduce((sum, t) => sum + getRawAmount(t), 0);
+  // Dashboard dynamic calculations (Consolidated)
+  const ingresosTotales = transactions
+    .filter((t) => getRawAmount(t) > 0)
+    .reduce((sum, t) => sum + convertAmount(getRawAmount(t), getCurrency(t), t.date), 0);
 
-  const totalBudgetLimit = 12000;
-  const totalBudgetExecutedPct = Math.min(100, Math.round((gastosSoles / totalBudgetLimit) * 100));
+  const gastosTotales = transactions
+    .filter((t) => getRawAmount(t) < 0)
+    .reduce((sum, t) => sum + convertAmount(Math.abs(getRawAmount(t)), getCurrency(t), t.date), 0);
+
+  const patrimonioCuentas = accounts
+    .reduce((sum, a) => sum + convertCurrentBalance((a.rawBalance || 0), a.currency), 0);
+  
+  const patrimonioTransacciones = transactions
+    .reduce((sum, t) => sum + convertAmount(getRawAmount(t), getCurrency(t), t.date), 0);
+
+  const patrimonioTotal = patrimonioCuentas + patrimonioTransacciones;
+
+  const totalBudgetLimitOriginal = 12000;
+  const totalBudgetLimit = dashboardCurrency === 'PEN' ? totalBudgetLimitOriginal : totalBudgetLimitOriginal / getLatestRate().sellRate;
+  const totalBudgetExecutedPct = Math.min(100, Math.round((gastosTotales / totalBudgetLimit) * 100));
   
   const dynamicBudgets = budgets.map((b) => {
     const executed = transactions
-      .filter((t) => getCurrency(t) === 'PEN' && (t.cat === b.cat || t.cat?.includes(b.cat)) && getRawAmount(t) < 0)
-      .reduce((sum, t) => sum + Math.abs(getRawAmount(t)), 0);
-    return { ...b, executed };
+      .filter((t) => (t.cat === b.cat || t.cat?.includes(b.cat)) && getRawAmount(t) < 0)
+      .reduce((sum, t) => sum + convertAmount(Math.abs(getRawAmount(t)), getCurrency(t), t.date), 0);
+    const limitConverted = dashboardCurrency === 'PEN' ? b.limit : b.limit / getLatestRate().sellRate;
+    return { ...b, limit: limitConverted, executed };
   });
+
+  const formatCurrency = (val: number) => {
+    return dashboardCurrency === 'PEN' 
+      ? `S/ ${val.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
+      : `$ ${val.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+  };
 
   return (
     <MantineProvider defaultColorScheme="dark">
@@ -353,7 +397,16 @@ export function App() {
                     Dashboard Financiero Familiar
                   </Title>
                 </div>
-                <Group gap="xs">
+                <Group gap="md">
+                  <SegmentedControl
+                    value={dashboardCurrency}
+                    onChange={(val) => setDashboardCurrency(val as 'PEN' | 'USD')}
+                    data={[
+                      { label: 'Soles (S/)', value: 'PEN' },
+                      { label: 'Dólares ($)', value: 'USD' },
+                    ]}
+                    color="teal"
+                  />
                   <Button variant="light" color="gray" leftSection={<IconArrowsExchange size={16} />} onClick={() => setModalType('transfer')}>
                     Transferir
                   </Button>
@@ -369,14 +422,14 @@ export function App() {
                   <Paper p="md" radius="md" style={{ background: '#1e293b', border: '1px solid #334155' }}>
                     <Group justify="space-between" mb="xs">
                       <Text size="xs" c="dimmed" fw={700} tt="uppercase">
-                        Patrimonio Soles (PEN)
+                        Patrimonio Total ({dashboardCurrency})
                       </Text>
                       <ThemeIcon color="teal" variant="light" size="md">
-                        <IconTrendingUp size={18} />
+                        <IconWallet size={18} />
                       </ThemeIcon>
                     </Group>
                     <Title order={2} style={{ color: '#2dd4bf' }}>
-                      S/ {patrimonioSoles.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                      {formatCurrency(patrimonioTotal)}
                     </Title>
                     <Text size="xs" c="dimmed" mt={4}>
                       Sin duplicidad por transferencias
@@ -388,17 +441,17 @@ export function App() {
                   <Paper p="md" radius="md" style={{ background: '#1e293b', border: '1px solid #334155' }}>
                     <Group justify="space-between" mb="xs">
                       <Text size="xs" c="dimmed" fw={700} tt="uppercase">
-                        Patrimonio Dólares (USD)
+                        Balance Mensual
                       </Text>
                       <ThemeIcon color="blue" variant="light" size="md">
-                        <IconCurrencyDollar size={18} />
+                        <IconTrendingUp size={18} />
                       </ThemeIcon>
                     </Group>
                     <Title order={2} style={{ color: '#38bdf8' }}>
-                      $ {patrimonioDolares.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      {formatCurrency(ingresosTotales - gastosTotales)}
                     </Title>
                     <Text size="xs" c="dimmed" mt={4}>
-                      Cuentas y Efectivo USD
+                      Ingresos - Gastos del Mes
                     </Text>
                   </Paper>
                 </Grid.Col>
@@ -414,10 +467,10 @@ export function App() {
                       </ThemeIcon>
                     </Group>
                     <Title order={2} style={{ color: '#4ade80' }}>
-                      S/ {ingresosSoles.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                      {formatCurrency(ingresosTotales)}
                     </Title>
                     <Text size="xs" c="dimmed" mt={4}>
-                      Sueldos y Honorarios
+                      Consolidado todas las cuentas
                     </Text>
                   </Paper>
                 </Grid.Col>
@@ -433,10 +486,10 @@ export function App() {
                       </ThemeIcon>
                     </Group>
                     <Title order={2} style={{ color: '#f87171' }}>
-                      S/ {gastosSoles.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                      {formatCurrency(gastosTotales)}
                     </Title>
                     <Text size="xs" c="dimmed" mt={4}>
-                      Ejecución de presupuesto: 57%
+                      Ejecución de presupuesto: {totalBudgetExecutedPct}%
                     </Text>
                   </Paper>
                 </Grid.Col>
@@ -499,7 +552,7 @@ export function App() {
                           Presupuesto de Agosto
                         </Text>
                         <Text size="xs" c="teal" fw={700}>
-                          S/ {gastosSoles.toLocaleString('es-PE', { minimumFractionDigits: 0 })} / S/ {totalBudgetLimit.toLocaleString('es-PE', { minimumFractionDigits: 0 })}
+                          {formatCurrency(gastosTotales)} / {formatCurrency(totalBudgetLimit)}
                         </Text>
                       </Group>
                       <Progress value={totalBudgetExecutedPct} color="teal" size="lg" radius="xl" animated mb="md" />
@@ -511,7 +564,7 @@ export function App() {
                             <div key={b.id}>
                               <Group justify="space-between">
                                 <Text size="xs">{b.cat} ({pct}%)</Text>
-                                <Text size="xs" fw={700} c={b.color}>S/ {b.executed.toLocaleString('es-PE', { minimumFractionDigits: 0 })} / S/ {b.limit.toLocaleString('es-PE', { minimumFractionDigits: 0 })}</Text>
+                                <Text size="xs" fw={700} c={b.color}>{formatCurrency(b.executed)} / {formatCurrency(b.limit)}</Text>
                               </Group>
                               <Progress value={pct} color={b.color} size="sm" radius="xl" mt={4} />
                             </div>
