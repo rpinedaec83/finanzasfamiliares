@@ -95,6 +95,15 @@ export function App() {
     return INITIAL_ACCOUNTS;
   });
 
+  const [creditCards, setCreditCards] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch('/api/creditcards')
+      .then(res => res.json())
+      .then(data => setCreditCards(data))
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     localStorage.setItem('kipu_transactions', JSON.stringify(transactions));
   }, [transactions]);
@@ -404,11 +413,11 @@ export function App() {
         <AppShell.Main style={{ background: '#090d16', minHeight: 'calc(100vh - 70px)' }}>
           <Container fluid p="md">
             {activeTab === 'Movimientos' ? (
-              <TransactionsView transactions={transactions} accounts={accounts} onNewExpense={() => setModalType('expense')} onClearAll={handleClearTransactions} onImportItems={handleImportItems} onEditTx={openEditTx} />
+              <TransactionsView transactions={transactions} accounts={accounts} creditCards={creditCards} onNewExpense={() => setModalType('expense')} onClearAll={handleClearTransactions} onImportItems={handleImportItems} onEditTx={openEditTx} />
             ) : activeTab === 'Cuentas Bancarias' ? (
               <AccountsView accounts={accounts} setAccounts={setAccounts} onTransfer={() => setModalType('transfer')} onExchange={() => setModalType('exchange')} />
             ) : activeTab === 'Tarjetas de Crédito' ? (
-              <CardsView />
+              <CardsView creditCards={creditCards} setCreditCards={setCreditCards} />
             ) : activeTab === 'Transferencias' ? (
               <TransfersView onTransfer={() => setModalType('transfer')} />
             ) : activeTab === 'Cambio de Moneda' ? (

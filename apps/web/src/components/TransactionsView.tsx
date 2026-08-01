@@ -29,16 +29,20 @@ interface TransactionItem {
 interface TransactionsViewProps {
   transactions: TransactionItem[];
   accounts?: { id: number; name: string }[];
+  creditCards?: { id: string; name: string }[];
   onNewExpense: () => void;
   onClearAll: () => void;
   onImportItems?: (items: TransactionItem[]) => void;
   onEditTx?: (tx: TransactionItem) => void;
 }
 
-export function TransactionsView({ transactions, accounts, onNewExpense, onClearAll, onImportItems, onEditTx }: TransactionsViewProps) {
+export function TransactionsView({ transactions, accounts, creditCards, onNewExpense, onClearAll, onImportItems, onEditTx }: TransactionsViewProps) {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [textModalOpened, setTextModalOpened] = useState(false);
+
+  const cardAsAccounts = (creditCards || []).map((c, i) => ({ id: 10000 + i, name: c.name || (c as any).Name || '' }));
+  const allAccountsForImport = [...(accounts || []), ...cardAsAccounts];
 
   const filtered = transactions.filter((tx) => {
     const matchesSearch = tx.desc.toLowerCase().includes(search.toLowerCase()) || tx.account.toLowerCase().includes(search.toLowerCase());
@@ -82,7 +86,7 @@ export function TransactionsView({ transactions, accounts, onNewExpense, onClear
         opened={textModalOpened}
         onClose={() => setTextModalOpened(false)}
         onImport={handleTextImported}
-        accounts={accounts}
+        accounts={allAccountsForImport}
       />
 
       <Card p="md" radius="md" style={{ background: '#1e293b', border: '1px solid #334155' }}>

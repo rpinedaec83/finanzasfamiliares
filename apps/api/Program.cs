@@ -1,4 +1,6 @@
+using KipuFinanzas.Api.Data;
 using KipuFinanzas.Api.Services;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,6 +16,11 @@ builder.Host.UseSerilog();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
+
+// Configuración de Entity Framework Core con PostgreSQL
+var connectionString = builder.Configuration["POSTGRES_CONNECTION_STRING"] ?? "Host=localhost;Database=kipufinanzas;Username=postgres;Password=KipuFinanzasSecurePass123!";
+builder.Services.AddDbContext<KipuFinanzas.Api.Data.KipuDbContext>(options =>
+    options.UseNpgsql(connectionString));
 
 // Servicios de Dominio Financiero & Seguridad
 builder.Services.AddSingleton<IAuthService>(new AuthService("SuperSecretKeyKipuFinanzasMin64CharsLengthMustBeRandomAndSecure123456!"));
@@ -46,6 +53,19 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Aplicar migraciones / crear tablas en PostgreSQL al iniciar
+try
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<KipuDbContext>();
+    db.Database.EnsureCreated();
+    app.Logger.LogInformation("[DB] PostgreSQL conectado y esquema verificado.");
+}
+catch (Exception ex)
+{
+    app.Logger.LogWarning("[DB] No se pudo conectar a PostgreSQL: {Msg}. Funcionando en modo in-memory.", ex.Message);
+}
 
 app.UseCors("AllowFrontend");
 
