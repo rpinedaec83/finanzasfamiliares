@@ -15,6 +15,8 @@ RUN dotnet publish "KipuFinanzas.Api.csproj" -c Release -o /app/publish /p:UseAp
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS final
 WORKDIR /app
+ENV ASPNETCORE_URLS=http://+:8080;http://+:80
 EXPOSE 8080
+EXPOSE 80
 COPY --from=build-backend /app/publish .
 ENTRYPOINT ["dotnet", "KipuFinanzas.Api.dll"]
