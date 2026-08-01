@@ -92,6 +92,15 @@ public class CategoryItem
     public bool IsActive { get; set; } = true;
 }
 
+public class AiClassificationRule
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Pattern { get; set; } = string.Empty;
+    public string NormalizedMerchant { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
+}
+
 public class Account
 {
     public Guid Id { get; set; } = Guid.NewGuid();

@@ -17,6 +17,8 @@ public class KipuDbContext : DbContext
     public DbSet<Family> Families => Set<Family>();
     public DbSet<FamilyMember> FamilyMembers => Set<FamilyMember>();
     public DbSet<FinancialInstitution> FinancialInstitutions => Set<FinancialInstitution>();
+    public DbSet<CategoryItem> Categories => Set<CategoryItem>();
+    public DbSet<AiClassificationRule> AiRules => Set<AiClassificationRule>();
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<CreditCard> CreditCards => Set<CreditCard>();
     public DbSet<Transaction> Transactions => Set<Transaction>();
