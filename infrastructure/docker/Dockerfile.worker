@@ -1,0 +1,19 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+WORKDIR /src
+
+COPY ["apps/worker/KipuFinanzas.Worker.csproj", "apps/worker/"]
+COPY ["packages/shared-contracts/KipuFinanzas.SharedContracts.csproj", "packages/shared-contracts/"]
+
+RUN dotnet restore "apps/worker/KipuFinanzas.Worker.csproj"
+
+COPY . .
+WORKDIR "/src/apps/worker"
+RUN dotnet build "KipuFinanzas.Worker.csproj" -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "KipuFinanzas.Worker.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "KipuFinanzas.Worker.dll"]

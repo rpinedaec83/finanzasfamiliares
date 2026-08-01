@@ -1,0 +1,114 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kipu-postgres
+    environment:
+      POSTGRES_DB: kipufinanzas
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: KipuFinanzasSecurePass123!
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d kipufinanzas"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: kipu-redis
+    command: redis-server --requirepass RedisSecurePass123!
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "RedisSecurePass123!", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:RELEASE.2024-01-31T03-05-40Z
+    container_name: kipu-minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.api
+    container_name: kipu-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - POSTGRES_CONNECTION_STRING=Host=postgres;Database=kipufinanzas;Username=postgres;Password=KipuFinanzasSecurePass123!
+      - REDIS_CONNECTION_STRING=redis:6379,password=RedisSecurePass123!
+      - JWT_SECRET=SuperSecretKeyKipuFinanzasMin64CharsLengthMustBeRandomAndSecure123456!
+      - MINIO_ENDPOINT=minio:9000
+    ports:
+      - "5000:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.worker
+    container_name: kipu-worker
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - POSTGRES_CONNECTION_STRING=Host=postgres;Database=kipufinanzas;Username=postgres;Password=KipuFinanzasSecurePass123!
+      - REDIS_CONNECTION_STRING=redis:6379,password=RedisSecurePass123!
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.telegram
+    container_name: kipu-telegram-bot
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - POSTGRES_CONNECTION_STRING=Host=postgres;Database=kipufinanzas;Username=postgres;Password=KipuFinanzasSecurePass123!
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.web
+    container_name: kipu-web
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

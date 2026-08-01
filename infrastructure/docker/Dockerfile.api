@@ -1,0 +1,20 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+WORKDIR /src
+
+COPY ["apps/api/KipuFinanzas.Api.csproj", "apps/api/"]
+COPY ["packages/shared-contracts/KipuFinanzas.SharedContracts.csproj", "packages/shared-contracts/"]
+
+RUN dotnet restore "apps/api/KipuFinanzas.Api.csproj"
+
+COPY . .
+WORKDIR "/src/apps/api"
+RUN dotnet build "KipuFinanzas.Api.csproj" -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "KipuFinanzas.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS final
+WORKDIR /app
+EXPOSE 8080
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "KipuFinanzas.Api.dll"]

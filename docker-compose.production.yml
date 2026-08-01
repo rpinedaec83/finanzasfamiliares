@@ -1,0 +1,148 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kipu-postgres-prod
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-kipufinanzas}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    networks:
+      - kipu-network
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d kipufinanzas"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: kipu-redis-prod
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_prod_data:/data
+    networks:
+      - kipu-network
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:RELEASE.2024-01-31T03-05-40Z
+    container_name: kipu-minio-prod
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_prod_data:/data
+    networks:
+      - kipu-network
+    restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.kipu-minio.rule=Host(`minio-finanzas.x-codec.net`)"
+      - "traefik.http.routers.kipu-minio.entrypoints=websecure"
+      - "traefik.http.routers.kipu-minio.tls.certresolver=letsencrypt"
+      - "traefik.http.services.kipu-minio.loadbalancer.server.port=9001"
+
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.api
+    container_name: kipu-api-prod
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - POSTGRES_CONNECTION_STRING=${POSTGRES_CONNECTION_STRING}
+      - REDIS_CONNECTION_STRING=${REDIS_CONNECTION_STRING}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ISSUER=${JWT_ISSUER}
+      - JWT_AUDIENCE=${JWT_AUDIENCE}
+      - ENCRYPTION_MASTER_KEY=${ENCRYPTION_MASTER_KEY}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    networks:
+      - kipu-network
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.kipu-api.rule=Host(`api-finanzas.x-codec.net`)"
+      - "traefik.http.routers.kipu-api.entrypoints=websecure"
+      - "traefik.http.routers.kipu-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.kipu-api.loadbalancer.server.port=8080"
+
+  worker:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.worker
+    container_name: kipu-worker-prod
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - POSTGRES_CONNECTION_STRING=${POSTGRES_CONNECTION_STRING}
+      - REDIS_CONNECTION_STRING=${REDIS_CONNECTION_STRING}
+      - ENCRYPTION_MASTER_KEY=${ENCRYPTION_MASTER_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    networks:
+      - kipu-network
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.telegram
+    container_name: kipu-telegram-prod
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - POSTGRES_CONNECTION_STRING=${POSTGRES_CONNECTION_STRING}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+    networks:
+      - kipu-network
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.web
+    container_name: kipu-web-prod
+    networks:
+      - kipu-network
+    restart: always
+    depends_on:
+      - api
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.kipu-web.rule=Host(`finanzas.x-codec.net`)"
+      - "traefik.http.routers.kipu-web.entrypoints=websecure"
+      - "traefik.http.routers.kipu-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.kipu-web.loadbalancer.server.port=80"
+
+networks:
+  kipu-network:
+    external: true
+
+volumes:
+  postgres_prod_data:
+  redis_prod_data:
+  minio_prod_data:

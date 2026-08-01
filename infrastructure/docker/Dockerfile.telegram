@@ -1,0 +1,19 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+WORKDIR /src
+
+COPY ["apps/telegram-bot/KipuFinanzas.TelegramBot.csproj", "apps/telegram-bot/"]
+COPY ["packages/shared-contracts/KipuFinanzas.SharedContracts.csproj", "packages/shared-contracts/"]
+
+RUN dotnet restore "apps/telegram-bot/KipuFinanzas.TelegramBot.csproj"
+
+COPY . .
+WORKDIR "/src/apps/telegram-bot"
+RUN dotnet build "KipuFinanzas.TelegramBot.csproj" -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "KipuFinanzas.TelegramBot.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "KipuFinanzas.TelegramBot.dll"]
