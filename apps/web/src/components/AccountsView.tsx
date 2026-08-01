@@ -28,17 +28,13 @@ interface AccountItem {
 }
 
 interface AccountsViewProps {
+  accounts: AccountItem[];
+  setAccounts: (accounts: AccountItem[]) => void;
   onTransfer: () => void;
   onExchange: () => void;
 }
 
-export function AccountsView({ onTransfer, onExchange }: AccountsViewProps) {
-  const [accounts, setAccounts] = useState<AccountItem[]>([
-    { id: 1, bank: 'BCP', name: 'BCP Cuenta Sueldo Soles', cci: '002-191-002849182012-52', rawBalance: 4520.50, currency: 'PEN', color: 'blue' },
-    { id: 2, bank: 'BBVA', name: 'BBVA Ahorro Dólares', cci: '011-182-000182948192-88', rawBalance: 12450.00, currency: 'USD', color: 'teal' },
-    { id: 3, bank: 'Banco Falabella', name: 'Falabella Ahorro Soles', cci: '089-012-000918273645-12', rawBalance: 1890.00, currency: 'PEN', color: 'green' },
-    { id: 4, bank: 'Efectivo', name: 'Billetera Efectivo Soles', cci: 'N/A', rawBalance: 350.00, currency: 'PEN', color: 'orange' },
-  ]);
+export function AccountsView({ accounts, setAccounts, onTransfer, onExchange }: AccountsViewProps) {
 
   // Modal State
   const [modalOpened, setModalOpened] = useState(false);

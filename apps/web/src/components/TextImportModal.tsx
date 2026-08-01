@@ -15,15 +15,25 @@ import {
 import { IconSparkles, IconCheck } from '@tabler/icons-react';
 import { parseBankText, ParsedTextTransaction } from '../utils/textImportParser';
 
+interface AccountOption {
+  id: number;
+  name: string;
+}
+
 interface TextImportModalProps {
   opened: boolean;
   onClose: () => void;
   onImport: (items: any[]) => void;
+  accounts?: AccountOption[];
 }
 
-export function TextImportModal({ opened, onClose, onImport }: TextImportModalProps) {
+export function TextImportModal({ opened, onClose, onImport, accounts }: TextImportModalProps) {
+  const accountOptions = accounts && accounts.length > 0
+    ? accounts.map((a) => a.name)
+    : ['BCP Cuenta Sueldo Soles', 'BBVA Ahorro Dólares', 'Falabella Ahorro Soles', 'Billetera Efectivo Soles'];
+
   const [rawText, setRawText] = useState('');
-  const [targetAccount, setTargetAccount] = useState('Interbank USD');
+  const [targetAccount, setTargetAccount] = useState(accountOptions[0] || 'BCP Cuenta Sueldo Soles');
   const [parsedRows, setParsedRows] = useState<ParsedTextTransaction[]>([]);
   const [step, setStep] = useState<'input' | 'preview'>('input');
 
@@ -94,10 +104,10 @@ US$ 2,808.00`;
           <Group justify="space-between" align="flex-end">
             <Select
               label="Cuenta de Destino"
-              data={['Interbank USD', 'BCP Sueldo Soles', 'BBVA Ahorros USD', 'Falabella Soles']}
+              data={accountOptions}
               value={targetAccount}
-              onChange={(v) => setTargetAccount(v || 'Interbank USD')}
-              style={{ width: 250 }}
+              onChange={(v) => setTargetAccount(v || accountOptions[0])}
+              style={{ width: 280 }}
             />
             <Button
               variant="subtle"

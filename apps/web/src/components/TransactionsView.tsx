@@ -27,12 +27,13 @@ interface TransactionItem {
 
 interface TransactionsViewProps {
   transactions: TransactionItem[];
+  accounts?: { id: number; name: string }[];
   onNewExpense: () => void;
   onClearAll: () => void;
   onImportItems?: (items: TransactionItem[]) => void;
 }
 
-export function TransactionsView({ transactions, onNewExpense, onClearAll, onImportItems }: TransactionsViewProps) {
+export function TransactionsView({ transactions, accounts, onNewExpense, onClearAll, onImportItems }: TransactionsViewProps) {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [textModalOpened, setTextModalOpened] = useState(false);
@@ -79,6 +80,7 @@ export function TransactionsView({ transactions, onNewExpense, onClearAll, onImp
         opened={textModalOpened}
         onClose={() => setTextModalOpened(false)}
         onImport={handleTextImported}
+        accounts={accounts}
       />
 
       <Card p="md" radius="md" style={{ background: '#1e293b', border: '1px solid #334155' }}>

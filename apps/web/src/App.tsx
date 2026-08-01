@@ -61,6 +61,12 @@ export function App() {
 
   // Interactive State
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([
+    { id: 1, bank: 'BCP', name: 'BCP Cuenta Sueldo Soles', cci: '002-191-002849182012-52', rawBalance: 4520.50, currency: 'PEN', color: 'blue' },
+    { id: 2, bank: 'BBVA', name: 'BBVA Ahorro Dólares', cci: '011-182-000182948192-88', rawBalance: 12450.00, currency: 'USD', color: 'teal' },
+    { id: 3, bank: 'Banco Falabella', name: 'Falabella Ahorro Soles', cci: '089-012-000918273645-12', rawBalance: 1890.00, currency: 'PEN', color: 'green' },
+    { id: 4, bank: 'Efectivo', name: 'Billetera Efectivo Soles', cci: 'N/A', rawBalance: 350.00, currency: 'PEN', color: 'orange' },
+  ]);
 
   const handleClearTransactions = () => {
     setTransactions([]);
@@ -239,9 +245,9 @@ export function App() {
         <AppShell.Main style={{ background: '#090d16', minHeight: 'calc(100vh - 70px)' }}>
           <Container fluid p="md">
             {activeTab === 'Movimientos' ? (
-              <TransactionsView transactions={transactions} onNewExpense={() => setModalType('expense')} onClearAll={handleClearTransactions} onImportItems={handleImportItems} />
+              <TransactionsView transactions={transactions} accounts={accounts} onNewExpense={() => setModalType('expense')} onClearAll={handleClearTransactions} onImportItems={handleImportItems} />
             ) : activeTab === 'Cuentas Bancarias' ? (
-              <AccountsView onTransfer={() => setModalType('transfer')} onExchange={() => setModalType('exchange')} />
+              <AccountsView accounts={accounts} setAccounts={setAccounts} onTransfer={() => setModalType('transfer')} onExchange={() => setModalType('exchange')} />
             ) : activeTab === 'Tarjetas de Crédito' ? (
               <CardsView />
             ) : activeTab === 'Transferencias' ? (
@@ -253,7 +259,7 @@ export function App() {
             ) : activeTab === 'Metas de Ahorro' ? (
               <GoalsView />
             ) : activeTab === 'Importación & OCR' ? (
-              <ImportView onImportItems={handleImportItems} />
+              <ImportView accounts={accounts} onImportItems={handleImportItems} />
             ) : activeTab === 'Alertas' ? (
               <AlertsView />
             ) : activeTab === 'Integraciones' ? (

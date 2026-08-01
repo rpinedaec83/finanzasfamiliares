@@ -25,9 +25,10 @@ import { TextImportModal } from './TextImportModal';
 
 interface ImportViewProps {
   onImportItems?: (items: any[]) => void;
+  accounts?: { id: number; name: string }[];
 }
 
-export function ImportView({ onImportItems }: ImportViewProps) {
+export function ImportView({ onImportItems, accounts }: ImportViewProps) {
   const [selectedBank, setSelectedBank] = useState<string | null>('bcp');
   const [textModalOpened, setTextModalOpened] = useState(false);
   const [isUploaded, setIsUploaded] = useState(false);
@@ -76,6 +77,7 @@ export function ImportView({ onImportItems }: ImportViewProps) {
             onImportItems(newItems);
           }
         }}
+        accounts={accounts}
       />
 
       <Grid>
