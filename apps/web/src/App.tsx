@@ -66,6 +66,10 @@ export function App() {
     setTransactions([]);
   };
 
+  const handleImportItems = (newItems: any[]) => {
+    setTransactions((prev) => [...newItems, ...prev]);
+  };
+
   const [budgets] = useState([
     { id: 1, cat: 'Supermercado', limit: 1500, executed: 1200, color: 'orange' },
     { id: 2, cat: 'Combustible & Transporte', limit: 600, executed: 270, color: 'teal' },
@@ -234,7 +238,7 @@ export function App() {
         <AppShell.Main style={{ background: '#090d16', minHeight: 'calc(100vh - 70px)' }}>
           <Container fluid p="md">
             {activeTab === 'Movimientos' ? (
-              <TransactionsView transactions={transactions} onNewExpense={() => setModalType('expense')} onClearAll={handleClearTransactions} />
+              <TransactionsView transactions={transactions} onNewExpense={() => setModalType('expense')} onClearAll={handleClearTransactions} onImportItems={handleImportItems} />
             ) : activeTab === 'Cuentas Bancarias' ? (
               <AccountsView onTransfer={() => setModalType('transfer')} onExchange={() => setModalType('exchange')} />
             ) : activeTab === 'Tarjetas de Crédito' ? (

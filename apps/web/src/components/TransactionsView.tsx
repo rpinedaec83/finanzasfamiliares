@@ -11,7 +11,8 @@ import {
   TextInput,
   Select,
 } from '@mantine/core';
-import { IconSearch, IconFilter, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconSearch, IconFilter, IconPlus, IconTrash, IconSparkles } from '@tabler/icons-react';
+import { TextImportModal } from './TextImportModal';
 
 interface TransactionItem {
   id: number;
@@ -28,17 +29,25 @@ interface TransactionsViewProps {
   transactions: TransactionItem[];
   onNewExpense: () => void;
   onClearAll: () => void;
+  onImportItems?: (items: TransactionItem[]) => void;
 }
 
-export function TransactionsView({ transactions, onNewExpense, onClearAll }: TransactionsViewProps) {
+export function TransactionsView({ transactions, onNewExpense, onClearAll, onImportItems }: TransactionsViewProps) {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [textModalOpened, setTextModalOpened] = useState(false);
 
   const filtered = transactions.filter((tx) => {
     const matchesSearch = tx.desc.toLowerCase().includes(search.toLowerCase()) || tx.account.toLowerCase().includes(search.toLowerCase());
     const matchesCat = !categoryFilter || tx.cat === categoryFilter;
     return matchesSearch && matchesCat;
   });
+
+  const handleTextImported = (newItems: TransactionItem[]) => {
+    if (onImportItems) {
+      onImportItems(newItems);
+    }
+  };
 
   return (
     <Stack gap="lg">
@@ -54,14 +63,23 @@ export function TransactionsView({ transactions, onNewExpense, onClearAll }: Tra
         <Group gap="xs">
           {transactions.length > 0 && (
             <Button variant="light" color="red" leftSection={<IconTrash size={16} />} onClick={onClearAll}>
-              Borrar Todos los Movimientos
+              Borrar Todos
             </Button>
           )}
+          <Button variant="light" color="violet" leftSection={<IconSparkles size={16} />} onClick={() => setTextModalOpened(true)}>
+            Pegar Texto Bancario (IA)
+          </Button>
           <Button color="red" leftSection={<IconPlus size={16} />} onClick={onNewExpense}>
             Registrar Gasto
           </Button>
         </Group>
       </Group>
+
+      <TextImportModal
+        opened={textModalOpened}
+        onClose={() => setTextModalOpened(false)}
+        onImport={handleTextImported}
+      />
 
       <Card p="md" radius="md" style={{ background: '#1e293b', border: '1px solid #334155' }}>
         <Group mb="md" justify="space-between">

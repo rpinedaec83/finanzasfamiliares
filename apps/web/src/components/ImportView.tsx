@@ -19,10 +19,13 @@ import {
   IconUpload,
   IconCheck,
   IconBuildingBank,
+  IconSparkles,
 } from '@tabler/icons-react';
+import { TextImportModal } from './TextImportModal';
 
 export function ImportView() {
-  const [selectedBank, setSelectedBank] = useState<string | null>('BCP');
+  const [selectedBank, setSelectedBank] = useState<string | null>('bcp');
+  const [textModalOpened, setTextModalOpened] = useState(false);
   const [isUploaded, setIsUploaded] = useState(false);
 
   const [previewRows, setPreviewRows] = useState([
@@ -43,14 +46,31 @@ export function ImportView() {
 
   return (
     <Stack gap="lg">
-      <div>
-        <Title order={2} style={{ color: '#f8fafc' }}>
-          Importación Bancaria & OCR
-        </Title>
-        <Text size="sm" c="dimmed">
-          Carga de estados de cuenta en PDF, Excel, CSV e imágenes con validación contable estricta
-        </Text>
-      </div>
+      <Group justify="space-between">
+        <div>
+          <Title order={2} style={{ color: '#f8fafc' }}>
+            Importación Bancaria Determinística & OCR
+          </Title>
+          <Text size="sm" c="dimmed">
+            Ingesta de extractos en PDF, Excel, CSV, Fotos de Vouchers o Pegando Texto Directo
+          </Text>
+        </div>
+        <Button
+          color="violet"
+          leftSection={<IconSparkles size={16} />}
+          onClick={() => setTextModalOpened(true)}
+        >
+          Pegar Texto Copiado (IA)
+        </Button>
+      </Group>
+
+      <TextImportModal
+        opened={textModalOpened}
+        onClose={() => setTextModalOpened(false)}
+        onImport={(newItems) => {
+          alert(`¡${newItems.length} movimientos importados exitosamente!`);
+        }}
+      />
 
       <Grid>
         <Grid.Col span={{ base: 12, md: 4 }}>
