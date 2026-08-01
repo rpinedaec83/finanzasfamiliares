@@ -153,7 +153,12 @@ app.MapGet("/api/health/db", async (IServiceProvider sp) =>
     }
     catch (Exception ex)
     {
-        return Results.Ok(new { connected = false, provider = "PostgreSQL", status = "Error", message = ex.Message });
+        var msg = ex.Message;
+        if (ex.InnerException != null)
+        {
+            msg += " -> " + ex.InnerException.Message;
+        }
+        return Results.Ok(new { connected = false, provider = "PostgreSQL", status = "Error", message = msg });
     }
 });
 
