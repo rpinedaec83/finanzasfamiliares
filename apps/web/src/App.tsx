@@ -222,6 +222,16 @@ export function App() {
       .filter((t) => t.currency === 'USD')
       .reduce((sum, t) => sum + (t.rawAmount || 0), 0);
 
+  const totalBudgetLimit = 12000;
+  const totalBudgetExecutedPct = Math.min(100, Math.round((gastosSoles / totalBudgetLimit) * 100));
+  
+  const dynamicBudgets = budgets.map((b) => {
+    const executed = transactions
+      .filter((t) => t.currency === 'PEN' && (t.cat === b.cat || t.cat?.includes(b.cat)) && (t.rawAmount || 0) < 0)
+      .reduce((sum, t) => sum + Math.abs(t.rawAmount || 0), 0);
+    return { ...b, executed };
+  });
+
   return (
     <MantineProvider defaultColorScheme="dark">
       <AppShell
@@ -474,19 +484,19 @@ export function App() {
                           Presupuesto de Agosto
                         </Text>
                         <Text size="xs" c="teal" fw={700}>
-                          S/ 6,840 / S/ 12,000
+                          S/ {gastosSoles.toLocaleString('es-PE', { minimumFractionDigits: 0 })} / S/ {totalBudgetLimit.toLocaleString('es-PE', { minimumFractionDigits: 0 })}
                         </Text>
                       </Group>
-                      <Progress value={57} color="teal" size="lg" radius="xl" animated mb="md" />
+                      <Progress value={totalBudgetExecutedPct} color="teal" size="lg" radius="xl" animated mb="md" />
 
                       <Stack gap="xs">
-                        {budgets.map((b) => {
-                          const pct = Math.round((b.executed / b.limit) * 100);
+                        {dynamicBudgets.map((b) => {
+                          const pct = Math.min(100, Math.round((b.executed / b.limit) * 100));
                           return (
                             <div key={b.id}>
                               <Group justify="space-between">
                                 <Text size="xs">{b.cat} ({pct}%)</Text>
-                                <Text size="xs" fw={700} c={b.color}>S/ {b.executed} / S/ {b.limit}</Text>
+                                <Text size="xs" fw={700} c={b.color}>S/ {b.executed.toLocaleString('es-PE', { minimumFractionDigits: 0 })} / S/ {b.limit.toLocaleString('es-PE', { minimumFractionDigits: 0 })}</Text>
                               </Group>
                               <Progress value={pct} color={b.color} size="sm" radius="xl" mt={4} />
                             </div>
