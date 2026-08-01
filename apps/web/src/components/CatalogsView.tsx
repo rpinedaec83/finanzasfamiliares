@@ -111,6 +111,18 @@ export function CatalogsView() {
   const [selectedMonth, setSelectedMonth] = useState<string>('8'); // Agosto por defecto en 2026
   const [selectedYear, setSelectedYear] = useState<string>('2026');
 
+  const formatDateIgnoreTimezone = (dateStr: string) => {
+    if (!dateStr) return '';
+    // Obtener la parte YYYY-MM-DD
+    const dateOnly = dateStr.split('T')[0];
+    const parts = dateOnly.split('-');
+    if (parts.length === 3) {
+      // Retorna formato DD/MM/YYYY
+      return `${parseInt(parts[2])}/${parseInt(parts[1])}/${parts[0]}`;
+    }
+    return new Date(dateStr).toLocaleDateString();
+  };
+
   const fetchExchangeRates = () => {
     fetch(`/api/catalogs/exchange-rates?month=${selectedMonth}&year=${selectedYear}`)
       .then(res => res.json())
@@ -462,7 +474,7 @@ export function CatalogsView() {
                 {exchangeRates.map((r) => (
                   <Table.Tr key={r.id} style={{ borderColor: '#334155' }}>
                     <Table.Td>
-                      <Text fw={600} size="sm">{new Date(r.date).toLocaleDateString()}</Text>
+                      <Text fw={600} size="sm">{formatDateIgnoreTimezone(r.date)}</Text>
                     </Table.Td>
                     <Table.Td>
                       <Text c="teal" fw={700}>{r.buyRate.toFixed(3)}</Text>
