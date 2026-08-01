@@ -1,24 +1,6 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: kipu-postgres-prod
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-kipufinanzas}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_prod_data:/var/lib/postgresql/data
-    networks:
-      - kipu-network
-    restart: always
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d kipufinanzas"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   redis:
     image: redis:7-alpine
     container_name: kipu-redis-prod
@@ -74,8 +56,6 @@ services:
       - kipu-network
     restart: always
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
     labels:
@@ -100,8 +80,6 @@ services:
       - kipu-network
     restart: always
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
 
@@ -117,9 +95,7 @@ services:
     networks:
       - kipu-network
     restart: always
-    depends_on:
-      postgres:
-        condition: service_healthy
+    # depends_on postgres removed since managed by Dokploy
 
   web:
     build:
@@ -143,6 +119,5 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_prod_data:
   redis_prod_data:
   minio_prod_data:
