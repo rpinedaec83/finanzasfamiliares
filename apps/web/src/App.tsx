@@ -56,6 +56,7 @@ import {
   IconWallet,
   IconSend,
   IconCategory,
+  IconEdit,
 } from '@tabler/icons-react';
 
 export function App() {
@@ -138,6 +139,44 @@ export function App() {
   const [receivedPEN, setReceivedPEN] = useState<number | string>(3755);
 
   const calculatedRate = Number(deliveredUSD) > 0 ? (Number(receivedPEN) / Number(deliveredUSD)).toFixed(4) : '0.0000';
+
+  const [editTxId, setEditTxId] = useState<number | null>(null);
+  const [editTxType, setEditTxType] = useState<string>('Gasto');
+  const [editTxCat, setEditTxCat] = useState<string>('Otros');
+  const [editTxOrigin, setEditTxOrigin] = useState<string>('BCP Cuenta Sueldo PEN');
+  const [editTxDest, setEditTxDest] = useState<string>('Interbank Cuenta Ahorro PEN');
+
+  const openEditTx = (tx: any) => {
+    setEditTxId(tx.id);
+    setEditTxType(tx.type?.toUpperCase() || 'GASTO');
+    setEditTxCat(tx.cat || 'Varios / Otros');
+    if (tx.account?.includes(' ➔ ')) {
+       const [orig, dest] = tx.account.split(' ➔ ');
+       setEditTxOrigin(orig.trim());
+       setEditTxDest(dest.trim());
+    } else {
+       setEditTxOrigin(tx.account || 'BCP Cuenta Sueldo PEN');
+       setEditTxDest('Interbank Cuenta Ahorro PEN');
+    }
+    setModalType('editTx');
+  };
+
+  const handleUpdateTx = () => {
+    setTransactions(transactions.map(t => {
+      if (t.id === editTxId) {
+        const isTransfer = editTxType.includes('TRANSFERENCIA');
+        return { 
+           ...t, 
+           type: editTxType, 
+           cat: isTransfer ? 'Transferencia' : editTxCat,
+           account: isTransfer ? `${editTxOrigin} ➔ ${editTxDest}` : t.account,
+           color: editTxType.includes('GASTO') ? 'red' : editTxType.includes('INGRESO') ? 'green' : editTxType.includes('TRANSFERENCIA') ? 'gray' : 'blue'
+        };
+      }
+      return t;
+    }));
+    setModalType(null);
+  };
 
   const navItems = [
     { label: 'Inicio', icon: IconLayoutDashboard },
@@ -363,7 +402,7 @@ export function App() {
         <AppShell.Main style={{ background: '#090d16', minHeight: 'calc(100vh - 70px)' }}>
           <Container fluid p="md">
             {activeTab === 'Movimientos' ? (
-              <TransactionsView transactions={transactions} accounts={accounts} onNewExpense={() => setModalType('expense')} onClearAll={handleClearTransactions} onImportItems={handleImportItems} />
+              <TransactionsView transactions={transactions} accounts={accounts} onNewExpense={() => setModalType('expense')} onClearAll={handleClearTransactions} onImportItems={handleImportItems} onEditTx={openEditTx} />
             ) : activeTab === 'Cuentas Bancarias' ? (
               <AccountsView accounts={accounts} setAccounts={setAccounts} onTransfer={() => setModalType('transfer')} onExchange={() => setModalType('exchange')} />
             ) : activeTab === 'Tarjetas de Crédito' ? (
@@ -522,6 +561,7 @@ export function App() {
                           <Table.Th style={{ color: '#94a3b8' }}>Cuenta / Banco</Table.Th>
                           <Table.Th style={{ color: '#94a3b8' }}>Tipo</Table.Th>
                           <Table.Th style={{ color: '#94a3b8', textAlign: 'right' }}>Monto</Table.Th>
+                          <Table.Th style={{ width: 40 }}></Table.Th>
                         </Table.Tr>
                       </Table.Thead>
                       <Table.Tbody>
@@ -535,6 +575,11 @@ export function App() {
                             <Table.Td>{tx.account}</Table.Td>
                             <Table.Td><Badge color={tx.color} variant="light">{tx.type}</Badge></Table.Td>
                             <Table.Td style={{ textAlign: 'right', fontWeight: 700 }}>{tx.amount}</Table.Td>
+                            <Table.Td>
+                              <ActionIcon variant="subtle" color="gray" onClick={() => openEditTx(tx)}>
+                                <IconEdit size={16} />
+                              </ActionIcon>
+                            </Table.Td>
                           </Table.Tr>
                         ))}
                       </Table.Tbody>
@@ -647,6 +692,48 @@ export function App() {
 
             <Button color="blue" fullWidth onClick={handleAddExchange}>
               Registrar Operación Cambiaria
+            </Button>
+          </Stack>
+        </Modal>
+
+        {/* MODAL 4: EDITAR TIPO/CATEGORIA */}
+        <Modal opened={modalType === 'editTx'} onClose={() => setModalType(null)} title="Editar Movimiento" centered radius="md">
+          <Stack gap="md">
+            <Select 
+              label="Tipo de Movimiento" 
+              data={['GASTO', 'INGRESO', 'TRANSFERENCIA', 'CAMBIO MONEDA']} 
+              value={editTxType} 
+              onChange={(val) => setEditTxType(val || 'GASTO')} 
+              required 
+            />
+            {editTxType.includes('TRANSFERENCIA') ? (
+              <>
+                <Select 
+                  label="Cuenta Origen" 
+                  data={['BCP Cuenta Sueldo PEN', 'Interbank Visa Signature', 'BBVA Ahorro Soles', 'Efectivo Soles', 'Interbank Cuenta Ahorro PEN', 'BCP Cuenta Ahorro USD']} 
+                  value={editTxOrigin}
+                  onChange={(val) => setEditTxOrigin(val || 'BCP Cuenta Sueldo PEN')} 
+                  required
+                />
+                <Select 
+                  label="Cuenta Destino" 
+                  data={['BCP Cuenta Sueldo PEN', 'Interbank Visa Signature', 'BBVA Ahorro Soles', 'Efectivo Soles', 'Interbank Cuenta Ahorro PEN', 'BCP Cuenta Ahorro USD']} 
+                  value={editTxDest}
+                  onChange={(val) => setEditTxDest(val || 'Interbank Cuenta Ahorro PEN')} 
+                  required
+                />
+              </>
+            ) : (
+              <TextInput 
+                label="Categoría" 
+                placeholder="ej. Varios / Otros" 
+                value={editTxCat} 
+                onChange={(e) => setEditTxCat(e.target.value)} 
+                required 
+              />
+            )}
+            <Button color="blue" fullWidth onClick={handleUpdateTx} leftSection={<IconEdit size={18} />}>
+              Actualizar Movimiento
             </Button>
           </Stack>
         </Modal>

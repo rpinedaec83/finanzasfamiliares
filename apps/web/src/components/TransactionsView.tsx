@@ -10,8 +10,9 @@ import {
   Card,
   TextInput,
   Select,
+  ActionIcon,
 } from '@mantine/core';
-import { IconSearch, IconFilter, IconPlus, IconTrash, IconSparkles } from '@tabler/icons-react';
+import { IconSearch, IconFilter, IconPlus, IconTrash, IconSparkles, IconEdit } from '@tabler/icons-react';
 import { TextImportModal } from './TextImportModal';
 
 interface TransactionItem {
@@ -31,9 +32,10 @@ interface TransactionsViewProps {
   onNewExpense: () => void;
   onClearAll: () => void;
   onImportItems?: (items: TransactionItem[]) => void;
+  onEditTx?: (tx: TransactionItem) => void;
 }
 
-export function TransactionsView({ transactions, accounts, onNewExpense, onClearAll, onImportItems }: TransactionsViewProps) {
+export function TransactionsView({ transactions, accounts, onNewExpense, onClearAll, onImportItems, onEditTx }: TransactionsViewProps) {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [textModalOpened, setTextModalOpened] = useState(false);
@@ -120,6 +122,7 @@ export function TransactionsView({ transactions, accounts, onNewExpense, onClear
                 <Table.Th style={{ color: '#94a3b8' }}>Categoría</Table.Th>
                 <Table.Th style={{ color: '#94a3b8' }}>Cuenta / Origen</Table.Th>
                 <Table.Th style={{ color: '#94a3b8', textAlign: 'right' }}>Monto</Table.Th>
+                <Table.Th style={{ width: 40 }}></Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -137,6 +140,13 @@ export function TransactionsView({ transactions, accounts, onNewExpense, onClear
                     <Text fw={700} color={tx.color === 'red' ? 'red' : tx.color === 'teal' ? 'teal' : tx.color === 'blue' ? 'blue' : 'violet'}>
                       {tx.amount}
                     </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    {onEditTx && (
+                      <ActionIcon variant="subtle" color="gray" onClick={() => onEditTx(tx)}>
+                        <IconEdit size={16} />
+                      </ActionIcon>
+                    )}
                   </Table.Td>
                 </Table.Tr>
               ))}
