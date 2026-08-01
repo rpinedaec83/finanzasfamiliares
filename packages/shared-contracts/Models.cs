@@ -82,6 +82,16 @@ public class FinancialInstitution
     public string LogoUrl { get; set; } = string.Empty;
 }
 
+public class CategoryItem
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = string.Empty;
+    public string Type { get; set; } = "Expense"; // Expense, Income, Transfer
+    public string Icon { get; set; } = "Folder";
+    public string Color { get; set; } = "blue";
+    public bool IsActive { get; set; } = true;
+}
+
 public class Account
 {
     public Guid Id { get; set; } = Guid.NewGuid();

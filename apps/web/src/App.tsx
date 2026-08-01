@@ -11,6 +11,7 @@ import { TransfersView } from './components/TransfersView';
 import { ExchangesView } from './components/ExchangesView';
 import { BudgetsView } from './components/BudgetsView';
 import { GoalsView } from './components/GoalsView';
+import { CatalogsView } from './components/CatalogsView';
 import {
   MantineProvider,
   AppShell,
@@ -54,6 +55,7 @@ import {
   IconTrendingDown,
   IconWallet,
   IconSend,
+  IconCategory,
 } from '@tabler/icons-react';
 
 export function App() {
@@ -138,6 +140,7 @@ export function App() {
     { label: 'Presupuestos', icon: IconChartPie },
     { label: 'Metas de Ahorro', icon: IconTarget },
     { label: 'Importación & OCR', icon: IconFileSpreadsheet },
+    { label: 'Catálogos & Maestras', icon: IconCategory },
     { label: 'Integraciones', icon: IconCloud },
     { label: 'Alertas', icon: IconBell },
     { label: 'Asistente IA', icon: IconRobot },
@@ -283,6 +286,8 @@ export function App() {
               <GoalsView />
             ) : activeTab === 'Importación & OCR' ? (
               <ImportView accounts={accounts} onImportItems={handleImportItems} />
+            ) : activeTab === 'Catálogos & Maestras' ? (
+              <CatalogsView />
             ) : activeTab === 'Alertas' ? (
               <AlertsView />
             ) : activeTab === 'Integraciones' ? (
