@@ -59,6 +59,7 @@ import {
   IconCategory,
   IconEdit,
   IconPigMoney,
+  IconDatabase,
 } from '@tabler/icons-react';
 
 export function App() {
@@ -71,6 +72,20 @@ export function App() {
       .then(res => res.json())
       .then(data => setExchangeRates(data))
       .catch(e => console.error(e));
+  }, []);
+
+  const [dbStatus, setDbStatus] = useState<{ connected: boolean; status: string; message: string } | null>(null);
+
+  useEffect(() => {
+    const checkDb = () => {
+      fetch('/api/health/db')
+        .then(res => res.json())
+        .then(data => setDbStatus(data))
+        .catch(() => setDbStatus({ connected: false, status: 'Error', message: 'API no disponible' }));
+    };
+    checkDb();
+    const interval = setInterval(checkDb, 30000); // revisa cada 30s
+    return () => clearInterval(interval);
   }, []);
 
   const INITIAL_ACCOUNTS = [
@@ -97,7 +112,29 @@ export function App() {
     return INITIAL_ACCOUNTS;
   });
 
-  const [creditCards, setCreditCards] = useState<any[]>([]);
+  const [creditCards, setCreditCards] = useState<any[]>(() => {
+    const saved = localStorage.getItem('kipu_creditcards');
+    if (saved) { try { return JSON.parse(saved); } catch (e) {} }
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('kipu_creditcards', JSON.stringify(creditCards));
+  }, [creditCards]);
+
+  useEffect(() => {
+    fetch('/api/creditcards')
+      .then(res => res.json())
+      .then(data => {
+        // Solo usar datos del API si localStorage está vacío (primera vez)
+        const saved = localStorage.getItem('kipu_creditcards');
+        const local = saved ? JSON.parse(saved) : [];
+        if (local.length === 0 && data.length > 0) {
+          setCreditCards(data);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const [deposits, setDeposits] = useState<any[]>(() => {
     const saved = localStorage.getItem('kipu_deposits');
@@ -108,13 +145,6 @@ export function App() {
   useEffect(() => {
     localStorage.setItem('kipu_deposits', JSON.stringify(deposits));
   }, [deposits]);
-
-  useEffect(() => {
-    fetch('/api/creditcards')
-      .then(res => res.json())
-      .then(data => setCreditCards(data))
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     localStorage.setItem('kipu_transactions', JSON.stringify(transactions));
@@ -378,6 +408,20 @@ export function App() {
             </Group>
 
             <Group gap="sm">
+              {/* DB Status Indicator */}
+              {dbStatus && (
+                <Badge
+                  variant="dot"
+                  color={dbStatus.connected ? 'teal' : 'red'}
+                  size="lg"
+                  radius="sm"
+                  style={{ cursor: 'default' }}
+                  title={dbStatus.message}
+                  leftSection={<IconDatabase size={12} />}
+                >
+                  DB: {dbStatus.connected ? 'PostgreSQL Online' : 'Modo In-Memory'}
+                </Badge>
+              )}
               <Badge variant="light" color="teal" size="lg" radius="sm">
                 Familia: Pineda López
               </Badge>

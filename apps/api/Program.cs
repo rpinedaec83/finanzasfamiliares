@@ -82,6 +82,26 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.MapGet("/api/health", () => new { app = "Kipu Finanzas API", status = "Healthy", version = "1.0.0" });
+
+app.MapGet("/api/health/db", async (IServiceProvider sp) =>
+{
+    try
+    {
+        using var scope = sp.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<KipuDbContext>();
+        var canConnect = await db.Database.CanConnectAsync();
+        if (canConnect)
+        {
+            return Results.Ok(new { connected = true, provider = "PostgreSQL", status = "Online", message = "Base de datos conectada correctamente." });
+        }
+        return Results.Ok(new { connected = false, provider = "PostgreSQL", status = "Offline", message = "No se pudo conectar a la base de datos." });
+    }
+    catch (Exception ex)
+    {
+        return Results.Ok(new { connected = false, provider = "PostgreSQL", status = "Error", message = ex.Message });
+    }
+});
+
 app.MapFallbackToFile("index.html");
 
 app.Run();
