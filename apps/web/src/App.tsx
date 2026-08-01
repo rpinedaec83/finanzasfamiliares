@@ -60,12 +60,11 @@ export function App() {
   const [activeTab, setActiveTab] = useState('Inicio');
 
   // Interactive State
-  const [transactions, setTransactions] = useState([
-    { id: 1, date: '01/08/2026', desc: 'SUPERMERCADOS WONG', cat: 'Supermercado', account: 'BCP Sueldo PEN', type: 'Gasto', amount: '- S/ 385.50', color: 'red' },
-    { id: 2, date: '31/07/2026', desc: 'Venta $1,000 USD @ 3.755 (Rextie)', cat: 'Cambio USD', account: 'BBVA USD ➔ BCP PEN', type: 'Cambio USD', amount: '+ S/ 3,755.00', color: 'blue' },
-    { id: 3, date: '30/07/2026', desc: 'Transferencia Interna Ahorro', cat: 'Transferencia', account: 'BCP Sueldo ➔ Interbank Ahorro', type: 'Transferencia', amount: 'S/ 1,500.00', color: 'gray' },
-    { id: 4, date: '28/07/2026', desc: 'NETFLIX SUBSCRIPTION', cat: 'Gasto Fijo', account: 'Tarjeta Interbank Visa', type: 'Gasto Fijo', amount: '- S/ 44.90', color: 'red' },
-  ]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+
+  const handleClearTransactions = () => {
+    setTransactions([]);
+  };
 
   const [budgets] = useState([
     { id: 1, cat: 'Supermercado', limit: 1500, executed: 1200, color: 'orange' },
@@ -235,7 +234,7 @@ export function App() {
         <AppShell.Main style={{ background: '#090d16', minHeight: 'calc(100vh - 70px)' }}>
           <Container fluid p="md">
             {activeTab === 'Movimientos' ? (
-              <TransactionsView transactions={transactions} onNewExpense={() => setModalType('expense')} />
+              <TransactionsView transactions={transactions} onNewExpense={() => setModalType('expense')} onClearAll={handleClearTransactions} />
             ) : activeTab === 'Cuentas Bancarias' ? (
               <AccountsView onTransfer={() => setModalType('transfer')} onExchange={() => setModalType('exchange')} />
             ) : activeTab === 'Tarjetas de Crédito' ? (

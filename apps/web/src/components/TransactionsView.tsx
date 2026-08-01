@@ -11,7 +11,7 @@ import {
   TextInput,
   Select,
 } from '@mantine/core';
-import { IconSearch, IconFilter, IconPlus } from '@tabler/icons-react';
+import { IconSearch, IconFilter, IconPlus, IconTrash } from '@tabler/icons-react';
 
 interface TransactionItem {
   id: number;
@@ -27,9 +27,10 @@ interface TransactionItem {
 interface TransactionsViewProps {
   transactions: TransactionItem[];
   onNewExpense: () => void;
+  onClearAll: () => void;
 }
 
-export function TransactionsView({ transactions, onNewExpense }: TransactionsViewProps) {
+export function TransactionsView({ transactions, onNewExpense, onClearAll }: TransactionsViewProps) {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
@@ -50,9 +51,16 @@ export function TransactionsView({ transactions, onNewExpense }: TransactionsVie
             Registro consolidado de ingresos, gastos, transferencias y cambios de divisas
           </Text>
         </div>
-        <Button color="red" leftSection={<IconPlus size={16} />} onClick={onNewExpense}>
-          Registrar Gasto
-        </Button>
+        <Group gap="xs">
+          {transactions.length > 0 && (
+            <Button variant="light" color="red" leftSection={<IconTrash size={16} />} onClick={onClearAll}>
+              Borrar Todos los Movimientos
+            </Button>
+          )}
+          <Button color="red" leftSection={<IconPlus size={16} />} onClick={onNewExpense}>
+            Registrar Gasto
+          </Button>
+        </Group>
       </Group>
 
       <Card p="md" radius="md" style={{ background: '#1e293b', border: '1px solid #334155' }}>
@@ -76,36 +84,45 @@ export function TransactionsView({ transactions, onNewExpense }: TransactionsVie
           </Group>
         </Group>
 
-        <Table highlightOnHover verticalSpacing="sm">
-          <Table.Thead>
-            <Table.Tr style={{ borderColor: '#334155' }}>
-              <Table.Th style={{ color: '#94a3b8' }}>Fecha</Table.Th>
-              <Table.Th style={{ color: '#94a3b8' }}>Descripción</Table.Th>
-              <Table.Th style={{ color: '#94a3b8' }}>Categoría</Table.Th>
-              <Table.Th style={{ color: '#94a3b8' }}>Cuenta / Origen</Table.Th>
-              <Table.Th style={{ color: '#94a3b8', textAlign: 'right' }}>Monto</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {filtered.map((tx) => (
-              <Table.Tr key={tx.id} style={{ borderColor: '#334155' }}>
-                <Table.Td>{tx.date}</Table.Td>
-                <Table.Td>
-                  <Text fw={600} size="sm">{tx.desc}</Text>
-                </Table.Td>
-                <Table.Td>
-                  <Badge color="gray" variant="light">{tx.cat}</Badge>
-                </Table.Td>
-                <Table.Td style={{ color: '#94a3b8' }}>{tx.account}</Table.Td>
-                <Table.Td style={{ textAlign: 'right' }}>
-                  <Text fw={700} color={tx.color === 'red' ? 'red' : tx.color === 'teal' ? 'teal' : tx.color === 'blue' ? 'blue' : 'violet'}>
-                    {tx.amount}
-                  </Text>
-                </Table.Td>
+        {filtered.length === 0 ? (
+          <Stack align="center" py="xl">
+            <Text color="dimmed" size="sm">No hay movimientos registrados.</Text>
+            <Button variant="light" color="blue" size="xs" leftSection={<IconPlus size={14} />} onClick={onNewExpense}>
+              Registrar el primer gasto
+            </Button>
+          </Stack>
+        ) : (
+          <Table highlightOnHover verticalSpacing="sm">
+            <Table.Thead>
+              <Table.Tr style={{ borderColor: '#334155' }}>
+                <Table.Th style={{ color: '#94a3b8' }}>Fecha</Table.Th>
+                <Table.Th style={{ color: '#94a3b8' }}>Descripción</Table.Th>
+                <Table.Th style={{ color: '#94a3b8' }}>Categoría</Table.Th>
+                <Table.Th style={{ color: '#94a3b8' }}>Cuenta / Origen</Table.Th>
+                <Table.Th style={{ color: '#94a3b8', textAlign: 'right' }}>Monto</Table.Th>
               </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+            </Table.Thead>
+            <Table.Tbody>
+              {filtered.map((tx) => (
+                <Table.Tr key={tx.id} style={{ borderColor: '#334155' }}>
+                  <Table.Td>{tx.date}</Table.Td>
+                  <Table.Td>
+                    <Text fw={600} size="sm">{tx.desc}</Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Badge color="gray" variant="light">{tx.cat}</Badge>
+                  </Table.Td>
+                  <Table.Td style={{ color: '#94a3b8' }}>{tx.account}</Table.Td>
+                  <Table.Td style={{ textAlign: 'right' }}>
+                    <Text fw={700} color={tx.color === 'red' ? 'red' : tx.color === 'teal' ? 'teal' : tx.color === 'blue' ? 'blue' : 'violet'}>
+                      {tx.amount}
+                    </Text>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        )}
       </Card>
     </Stack>
   );
