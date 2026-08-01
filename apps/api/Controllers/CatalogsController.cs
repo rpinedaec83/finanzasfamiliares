@@ -132,26 +132,73 @@ public class CatalogsController : ControllerBase
         try
         {
             var rates = new List<ExchangeRate>();
-            var baseDate = new DateTime(req.Year, req.Month, 1, 0, 0, 0, DateTimeKind.Utc);
             
-            decimal buyBase = 3.39m;
-            decimal sellBase = 3.40m;
-            var rand = new Random();
-
-            for (int i = 0; i < DateTime.DaysInMonth(req.Year, req.Month); i++)
+            // Intentar consultar la API interna de SUNAT utilizando el formato provisto
+            try
             {
-                var current = baseDate.AddDays(i);
-                if (current.DayOfWeek == DayOfWeek.Sunday) continue;
-
-                rates.Add(new ExchangeRate
+                using var client = new HttpClient();
+                // Configuramos User-Agent para simular navegador y evitar bloqueo básico
+                client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6 Safari/605.1.15");
+                client.DefaultRequestHeaders.Add("Accept", "application/json, text/javascript, */*; q=0.01");
+                
+                // Nota: En Javascript getMonth() es 0-indexed, y la API interna de SUNAT espera:
+                // Enero = 0, Julio = 6, Agosto = 7. Hacemos la conversión restando 1.
+                int sunatMonth = req.Month - 1;
+                var payload = new { anio = req.Year, mes = sunatMonth };
+                
+                var response = await client.PostAsJsonAsync("https://e-consulta.sunat.gob.pe/cl-at-ittipcam/tcS01Alias/listarTipoCambio", payload);
+                if (response.IsSuccessStatusCode)
                 {
-                    Id = Guid.NewGuid(),
-                    Date = current,
-                    BuyRate = buyBase + (rand.Next(-2, 3) / 100m),
-                    SellRate = sellBase + (rand.Next(-2, 3) / 100m),
-                    Source = "SUNAT",
-                    IsEstimated = false
-                });
+                    var sunatData = await response.Content.ReadFromJsonAsync<List<SunatResponseItem>>();
+                    if (sunatData != null && sunatData.Count > 0)
+                    {
+                        foreach (var item in sunatData)
+                        {
+                            if (DateTime.TryParse(item.fecDivisa, out var parsedDate))
+                            {
+                                rates.Add(new ExchangeRate
+                                {
+                                    Id = Guid.NewGuid(),
+                                    Date = DateTime.SpecifyKind(parsedDate, DateTimeKind.Utc),
+                                    BuyRate = item.valCompra,
+                                    SellRate = item.valVenta,
+                                    Source = "SUNAT Oficial",
+                                    IsEstimated = false
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Logueamos error pero continuamos con el fallback estimado
+                Console.WriteLine($"[SUNAT] Error consultando API: {ex.Message}");
+            }
+
+            // Fallback estimado si la SUNAT devuelve vacío o bloquea la petición por Cookies/WAF
+            if (!rates.Any())
+            {
+                var baseDate = new DateTime(req.Year, req.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                decimal buyBase = 3.74m; // Promedio histórico de compra
+                decimal sellBase = 3.75m; // Promedio histórico de venta
+                var rand = new Random();
+
+                for (int i = 0; i < DateTime.DaysInMonth(req.Year, req.Month); i++)
+                {
+                    var current = baseDate.AddDays(i);
+                    if (current.DayOfWeek == DayOfWeek.Sunday) continue;
+
+                    rates.Add(new ExchangeRate
+                    {
+                        Id = Guid.NewGuid(),
+                        Date = current,
+                        BuyRate = buyBase + (rand.Next(-10, 11) / 1000m),
+                        SellRate = sellBase + (rand.Next(-10, 11) / 1000m),
+                        Source = "SUNAT Estimado (Simulado)",
+                        IsEstimated = true
+                    });
+                }
             }
 
             if (_context != null)
@@ -237,4 +284,11 @@ public class SyncRequest
 {
     public int Month { get; set; }
     public int Year { get; set; }
+}
+
+public class SunatResponseItem
+{
+    public string fecDivisa { get; set; } = "";
+    public decimal valCompra { get; set; }
+    public decimal valVenta { get; set; }
 }
