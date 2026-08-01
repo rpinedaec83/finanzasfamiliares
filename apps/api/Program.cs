@@ -139,6 +139,16 @@ app.MapGet("/api/health/db", async (IServiceProvider sp) =>
         {
             return Results.Ok(new { connected = true, provider = "PostgreSQL", status = "Online", message = "Base de datos conectada correctamente." });
         }
+
+        // Intento de auto-creación si el servidor está online pero la BD no existe
+        await db.Database.EnsureCreatedAsync();
+        
+        canConnect = await db.Database.CanConnectAsync();
+        if (canConnect)
+        {
+            return Results.Ok(new { connected = true, provider = "PostgreSQL", status = "Online", message = "Base de datos creada e inicializada correctamente." });
+        }
+
         return Results.Ok(new { connected = false, provider = "PostgreSQL", status = "Offline", message = "No se pudo conectar a la base de datos." });
     }
     catch (Exception ex)
