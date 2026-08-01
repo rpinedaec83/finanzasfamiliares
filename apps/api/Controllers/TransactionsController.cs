@@ -1,5 +1,7 @@
+using KipuFinanzas.Api.Data;
 using KipuFinanzas.SharedContracts;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace KipuFinanzas.Api.Controllers;
 
@@ -7,47 +9,62 @@ namespace KipuFinanzas.Api.Controllers;
 [Route("api/[controller]")]
 public class TransactionsController : ControllerBase
 {
-    private static readonly List<Transaction> SampleTransactions = new()
+    private readonly KipuDbContext? _context;
+
+    private static readonly List<Transaction> InMemoryTransactions = new();
+
+    public TransactionsController(KipuDbContext? context = null)
     {
-        new Transaction
-        {
-            Id = Guid.NewGuid(),
-            OperationDate = DateTime.UtcNow.AddDays(-1),
-            DescriptionOriginal = "SUPERMERCADOS WONG BCP",
-            DescriptionNormalized = "Supermercados Wong",
-            Amount = 385.50m,
-            Currency = Currency.PEN,
-            Type = TransactionType.Expense,
-            Category = "Supermercado",
-            Merchant = "Wong",
-            Status = TransactionStatus.Confirmed
-        },
-        new Transaction
-        {
-            Id = Guid.NewGuid(),
-            OperationDate = DateTime.UtcNow.AddDays(-2),
-            DescriptionOriginal = "REXTIE VENTA USD",
-            DescriptionNormalized = "Venta de Dólares Rextie",
-            Amount = 3755.00m,
-            Currency = Currency.PEN,
-            Type = TransactionType.CurrencyExchange,
-            Category = "Cambio de Moneda",
-            Merchant = "Rextie",
-            Status = TransactionStatus.Confirmed
-        }
-    };
+        _context = context;
+    }
 
     [HttpGet]
-    public IActionResult GetTransactions()
+    public async Task<IActionResult> GetTransactions()
     {
-        return Ok(SampleTransactions);
+        if (_context != null)
+        {
+            try
+            {
+                var dbTx = await _context.Transactions.OrderByDescending(t => t.OperationDate).ToListAsync();
+                if (dbTx.Any()) return Ok(dbTx);
+            }
+            catch { }
+        }
+        return Ok(InMemoryTransactions);
     }
 
     [HttpPost]
-    public IActionResult CreateTransaction([FromBody] Transaction transaction)
+    public async Task<IActionResult> CreateTransaction([FromBody] Transaction transaction)
     {
         transaction.Id = Guid.NewGuid();
-        SampleTransactions.Add(transaction);
+        if (_context != null)
+        {
+            try
+            {
+                await _context.Transactions.AddAsync(transaction);
+                await _context.SaveChangesAsync();
+            }
+            catch { }
+        }
+
+        InMemoryTransactions.Add(transaction);
         return Ok(transaction);
+    }
+
+    [HttpDelete]
+    public async Task<IActionResult> ClearAllTransactions()
+    {
+        if (_context != null)
+        {
+            try
+            {
+                _context.Transactions.RemoveRange(_context.Transactions);
+                await _context.SaveChangesAsync();
+            }
+            catch { }
+        }
+
+        InMemoryTransactions.Clear();
+        return Ok(new { message = "Todos los movimientos han sido eliminados de la base de datos." });
     }
 }
