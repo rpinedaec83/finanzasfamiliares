@@ -199,6 +199,29 @@ export function App() {
     setModalType(null);
   };
 
+  // Dashboard dynamic calculations
+  const ingresosSoles = transactions
+    .filter((t) => t.currency === 'PEN' && (t.rawAmount || 0) > 0)
+    .reduce((sum, t) => sum + (t.rawAmount || 0), 0);
+
+  const gastosSoles = transactions
+    .filter((t) => t.currency === 'PEN' && (t.rawAmount || 0) < 0)
+    .reduce((sum, t) => sum + Math.abs(t.rawAmount || 0), 0);
+
+  const patrimonioSoles = accounts
+    .filter((a) => a.currency === 'PEN')
+    .reduce((sum, a) => sum + (a.rawBalance || 0), 0) + 
+    transactions
+      .filter((t) => t.currency === 'PEN')
+      .reduce((sum, t) => sum + (t.rawAmount || 0), 0);
+
+  const patrimonioDolares = accounts
+    .filter((a) => a.currency === 'USD')
+    .reduce((sum, a) => sum + (a.rawBalance || 0), 0) + 
+    transactions
+      .filter((t) => t.currency === 'USD')
+      .reduce((sum, t) => sum + (t.rawAmount || 0), 0);
+
   return (
     <MantineProvider defaultColorScheme="dark">
       <AppShell
@@ -328,7 +351,7 @@ export function App() {
                       </ThemeIcon>
                     </Group>
                     <Title order={2} style={{ color: '#2dd4bf' }}>
-                      S/ 84,520.00
+                      S/ {patrimonioSoles.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                     </Title>
                     <Text size="xs" c="dimmed" mt={4}>
                       Sin duplicidad por transferencias
@@ -347,7 +370,7 @@ export function App() {
                       </ThemeIcon>
                     </Group>
                     <Title order={2} style={{ color: '#38bdf8' }}>
-                      $ 12,450.00
+                      $ {patrimonioDolares.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </Title>
                     <Text size="xs" c="dimmed" mt={4}>
                       Cuentas y Efectivo USD
@@ -366,7 +389,7 @@ export function App() {
                       </ThemeIcon>
                     </Group>
                     <Title order={2} style={{ color: '#4ade80' }}>
-                      S/ 14,200.00
+                      S/ {ingresosSoles.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                     </Title>
                     <Text size="xs" c="dimmed" mt={4}>
                       Sueldos y Honorarios
@@ -385,7 +408,7 @@ export function App() {
                       </ThemeIcon>
                     </Group>
                     <Title order={2} style={{ color: '#f87171' }}>
-                      S/ 6,840.00
+                      S/ {gastosSoles.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                     </Title>
                     <Text size="xs" c="dimmed" mt={4}>
                       Ejecución de presupuesto: 57%
