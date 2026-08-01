@@ -107,7 +107,9 @@ public class AccountsController : ControllerBase
                 var existing = await _context.Accounts.FindAsync(id);
                 if (existing != null)
                 {
+                    existing.BankName = account.BankName;
                     existing.Name = account.Name;
+                    existing.CciNumber = account.CciNumber;
                     existing.BalanceAvailable = account.BalanceAvailable;
                     existing.Currency = account.Currency;
                     await _context.SaveChangesAsync();

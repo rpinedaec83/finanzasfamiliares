@@ -88,7 +88,9 @@ public class Account
     public Guid FamilyId { get; set; }
     public Guid OwnerUserId { get; set; }
     public Guid? InstitutionId { get; set; }
+    public string BankName { get; set; } = string.Empty; // BCP, BBVA, Interbank, Banco Falabella, Scotiabank, BanBif, Pichincha, Efectivo
     public string Name { get; set; } = string.Empty;
+    public string CciNumber { get; set; } = string.Empty; // Número de Cuenta o CCI (ej. 002-191-002849182012-52)
     public AccountType Type { get; set; }
     public Currency Currency { get; set; }
     public decimal BalanceAvailable { get; set; }
