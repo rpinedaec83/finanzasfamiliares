@@ -14,6 +14,7 @@ import { GoalsView } from './components/GoalsView';
 import { CatalogsView } from './components/CatalogsView';
 import { InvestmentsView } from './components/InvestmentsView';
 import { LoginView } from './components/LoginView';
+import { OnboardingView } from './components/OnboardingView';
 
 // Interceptar fetch para inyectar token JWT automáticamente en todas las peticiones
 const originalFetch = window.fetch;
@@ -122,6 +123,39 @@ export function App() {
       .then(data => setExchangeRates(data))
       .catch(e => console.error(e));
   }, []);
+  const [loadingData, setLoadingData] = useState(true);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [creditCards, setCreditCards] = useState<any[]>([]);
+  const [deposits, setDeposits] = useState<any[]>([]);
+  const [budgets, setBudgets] = useState<any[]>([]);
+  const [goals, setGoals] = useState<any[]>([]);
+
+  const loadUserData = () => {
+    if (!token) return;
+    setLoadingData(true);
+    
+    Promise.all([
+      fetch('/api/accounts').then(r => r.json()).catch(() => []),
+      fetch('/api/creditcards').then(r => r.json()).catch(() => []),
+      fetch('/api/transactions').then(r => r.json()).catch(() => []),
+      fetch('/api/budgets').then(r => r.json()).catch(() => []),
+      fetch('/api/goals').then(r => r.json()).catch(() => []),
+    ]).then(([accountsData, cardsData, txsData, budgetsData, goalsData]) => {
+      setAccounts(accountsData || []);
+      setCreditCards(cardsData || []);
+      setTransactions(txsData || []);
+      setBudgets(budgetsData || []);
+      setGoals(goalsData || []);
+      setLoadingData(false);
+    }).catch(() => {
+      setLoadingData(false);
+    });
+  };
+
+  useEffect(() => {
+    loadUserData();
+  }, [token]);
 
   const [dbStatus, setDbStatus] = useState<{ connected: boolean; status: string; message: string } | null>(null);
 
@@ -137,72 +171,6 @@ export function App() {
     return () => clearInterval(interval);
   }, []);
 
-  const INITIAL_ACCOUNTS = [
-    { id: 1, bank: 'BCP', name: 'BCP Cuenta Sueldo Soles', cci: '002-191-002849182012-52', rawBalance: 4520.50, currency: 'PEN', color: 'blue' },
-    { id: 2, bank: 'BBVA', name: 'BBVA Ahorro Dólares', cci: '011-182-000182948192-88', rawBalance: 12450.00, currency: 'USD', color: 'teal' },
-    { id: 3, bank: 'Banco Falabella', name: 'Falabella Ahorro Soles', cci: '089-012-000918273645-12', rawBalance: 1890.00, currency: 'PEN', color: 'green' },
-    { id: 4, bank: 'Efectivo', name: 'Billetera Efectivo Soles', cci: 'N/A', rawBalance: 350.00, currency: 'PEN', color: 'orange' },
-  ];
-
-  // Interactive Persistent State
-  const [transactions, setTransactions] = useState<any[]>(() => {
-    const saved = localStorage.getItem('kipu_transactions');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return [];
-  });
-
-  const [accounts, setAccounts] = useState<any[]>(() => {
-    const saved = localStorage.getItem('kipu_accounts');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return INITIAL_ACCOUNTS;
-  });
-
-  const [creditCards, setCreditCards] = useState<any[]>(() => {
-    const saved = localStorage.getItem('kipu_creditcards');
-    if (saved) { try { return JSON.parse(saved); } catch (e) {} }
-    return [];
-  });
-
-  useEffect(() => {
-    localStorage.setItem('kipu_creditcards', JSON.stringify(creditCards));
-  }, [creditCards]);
-
-  useEffect(() => {
-    fetch('/api/creditcards')
-      .then(res => res.json())
-      .then(data => {
-        // Solo usar datos del API si localStorage está vacío (primera vez)
-        const saved = localStorage.getItem('kipu_creditcards');
-        const local = saved ? JSON.parse(saved) : [];
-        if (local.length === 0 && data.length > 0) {
-          setCreditCards(data);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  const [deposits, setDeposits] = useState<any[]>(() => {
-    const saved = localStorage.getItem('kipu_deposits');
-    if (saved) { try { return JSON.parse(saved); } catch (e) {} }
-    return [];
-  });
-
-  useEffect(() => {
-    localStorage.setItem('kipu_deposits', JSON.stringify(deposits));
-  }, [deposits]);
-
-  useEffect(() => {
-    localStorage.setItem('kipu_transactions', JSON.stringify(transactions));
-  }, [transactions]);
-
-  useEffect(() => {
-    localStorage.setItem('kipu_accounts', JSON.stringify(accounts));
-  }, [accounts]);
-
   const handleClearTransactions = () => {
     setTransactions([]);
   };
@@ -211,17 +179,6 @@ export function App() {
     setTransactions((prev) => [...newItems, ...prev]);
     setActiveTab('Movimientos');
   };
-
-  const [budgets] = useState([
-    { id: 1, cat: 'Supermercado', limit: 1500, executed: 1200, color: 'orange' },
-    { id: 2, cat: 'Combustible & Transporte', limit: 600, executed: 270, color: 'teal' },
-    { id: 3, cat: 'Fotografía & Tecnología', limit: 800, executed: 350, color: 'blue' },
-  ]);
-
-  const [goals] = useState([
-    { id: 1, name: 'Lente Fotográfico Sony', target: 7000, saved: 4300, currency: 'PEN' },
-    { id: 2, name: 'Fondo de Emergencia USD', target: 10000, saved: 8500, currency: 'USD' },
-  ]);
 
   // Modals state
   const [modalType, setModalType] = useState<string | null>(null);
@@ -437,6 +394,14 @@ export function App() {
     return (
       <MantineProvider defaultColorScheme="dark">
         <LoginView onAuthSuccess={handleAuthSuccess} />
+      </MantineProvider>
+    );
+  }
+
+  if (!loadingData && accounts.length === 0) {
+    return (
+      <MantineProvider defaultColorScheme="dark">
+        <OnboardingView onComplete={loadUserData} />
       </MantineProvider>
     );
   }

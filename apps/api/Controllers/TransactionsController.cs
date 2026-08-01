@@ -26,7 +26,7 @@ public class TransactionsController : ControllerBase
             try
             {
                 var dbTx = await _context.Transactions.OrderByDescending(t => t.OperationDate).ToListAsync();
-                if (dbTx.Any()) return Ok(dbTx);
+                return Ok(dbTx);
             }
             catch { }
         }

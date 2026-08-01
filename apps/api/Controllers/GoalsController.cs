@@ -1,5 +1,7 @@
+using KipuFinanzas.Api.Data;
 using KipuFinanzas.SharedContracts;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace KipuFinanzas.Api.Controllers;
 
@@ -7,39 +9,33 @@ namespace KipuFinanzas.Api.Controllers;
 [Route("api/[controller]")]
 public class GoalsController : ControllerBase
 {
-    private static readonly List<SavingsGoal> SampleGoals = new()
+    private readonly KipuDbContext _context;
+
+    public GoalsController(KipuDbContext context)
     {
-        new SavingsGoal
-        {
-            Id = Guid.NewGuid(),
-            Name = "Lente Fotográfico Sony 24-70mm GM II",
-            TargetAmount = 7000.00m,
-            SavedAmount = 4300.00m,
-            Currency = Currency.PEN,
-            TargetDate = DateTime.UtcNow.AddMonths(4)
-        },
-        new SavingsGoal
-        {
-            Id = Guid.NewGuid(),
-            Name = "Fondo de Emergencia Familiar",
-            TargetAmount = 10000.00m,
-            SavedAmount = 8500.00m,
-            Currency = Currency.USD,
-            TargetDate = DateTime.UtcNow.AddMonths(12)
-        }
-    };
+        _context = context;
+    }
 
     [HttpGet]
-    public IActionResult GetGoals()
+    public async Task<IActionResult> GetGoals()
     {
-        return Ok(SampleGoals);
+        var goals = await _context.SavingsGoals.ToListAsync();
+        return Ok(goals);
     }
 
     [HttpPost]
-    public IActionResult CreateGoal([FromBody] SavingsGoal goal)
+    public async Task<IActionResult> CreateGoal([FromBody] SavingsGoal goal)
     {
         goal.Id = Guid.NewGuid();
-        SampleGoals.Add(goal);
+        if (goal.TargetDate == default)
+        {
+            goal.TargetDate = DateTime.UtcNow.AddMonths(6);
+        }
+        // Asegurar que la fecha de la meta esté marcada como UTC para postgres
+        goal.TargetDate = DateTime.SpecifyKind(goal.TargetDate, DateTimeKind.Utc);
+        
+        await _context.SavingsGoals.AddAsync(goal);
+        await _context.SaveChangesAsync();
         return Ok(goal);
     }
 }

@@ -72,7 +72,7 @@ public class AccountsController : ControllerBase
             try
             {
                 var dbAccounts = await _context.Accounts.ToListAsync();
-                if (dbAccounts.Any()) return Ok(dbAccounts);
+                return Ok(dbAccounts);
             }
             catch { }
         }

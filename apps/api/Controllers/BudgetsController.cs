@@ -1,5 +1,7 @@
+using KipuFinanzas.Api.Data;
 using KipuFinanzas.SharedContracts;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace KipuFinanzas.Api.Controllers;
 
@@ -7,25 +9,26 @@ namespace KipuFinanzas.Api.Controllers;
 [Route("api/[controller]")]
 public class BudgetsController : ControllerBase
 {
-    private static readonly List<Budget> SampleBudgets = new()
+    private readonly KipuDbContext _context;
+
+    public BudgetsController(KipuDbContext context)
     {
-        new Budget { Id = Guid.NewGuid(), CategoryName = "Supermercado", LimitAmount = 1500.00m, ExecutedAmount = 1200.00m, Month = 8, Year = 2026 },
-        new Budget { Id = Guid.NewGuid(), CategoryName = "Combustible & Transporte", LimitAmount = 600.00m, ExecutedAmount = 270.00m, Month = 8, Year = 2026 },
-        new Budget { Id = Guid.NewGuid(), CategoryName = "Fotografía & Tecnología", LimitAmount = 800.00m, ExecutedAmount = 350.00m, Month = 8, Year = 2026 },
-        new Budget { Id = Guid.NewGuid(), CategoryName = "Streaming & Entretenimiento", LimitAmount = 150.00m, ExecutedAmount = 89.80m, Month = 8, Year = 2026 }
-    };
+        _context = context;
+    }
 
     [HttpGet]
-    public IActionResult GetBudgets()
+    public async Task<IActionResult> GetBudgets()
     {
-        return Ok(SampleBudgets);
+        var budgets = await _context.Budgets.ToListAsync();
+        return Ok(budgets);
     }
 
     [HttpPost]
-    public IActionResult CreateBudget([FromBody] Budget budget)
+    public async Task<IActionResult> CreateBudget([FromBody] Budget budget)
     {
         budget.Id = Guid.NewGuid();
-        SampleBudgets.Add(budget);
+        await _context.Budgets.AddAsync(budget);
+        await _context.SaveChangesAsync();
         return Ok(budget);
     }
 }

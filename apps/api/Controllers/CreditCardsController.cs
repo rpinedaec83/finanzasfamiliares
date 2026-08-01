@@ -51,7 +51,7 @@ public class CreditCardsController : ControllerBase
             try
             {
                 var dbCards = await _context.CreditCards.ToListAsync();
-                if (dbCards.Any()) return Ok(dbCards);
+                return Ok(dbCards);
             }
             catch { }
         }
