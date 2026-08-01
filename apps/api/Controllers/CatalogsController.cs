@@ -10,6 +10,7 @@ namespace KipuFinanzas.Api.Controllers;
 public class CatalogsController : ControllerBase
 {
     private readonly KipuDbContext? _context;
+    private static List<ExchangeRate> InMemoryExchangeRates = new();
 
     public CatalogsController(KipuDbContext? context = null)
     {
@@ -111,22 +112,18 @@ public class CatalogsController : ControllerBase
             }
             catch { }
         }
-        return Ok(new List<ExchangeRate>());
+        
+        return Ok(InMemoryExchangeRates.OrderBy(x => x.Date).ToList());
     }
 
     [HttpPost("sync-exchange-rates")]
     public async Task<IActionResult> SyncExchangeRates([FromBody] SyncRequest req)
     {
-        if (_context == null) return BadRequest("DB not available");
-
         try
         {
-            // Simulate fetching from SUNAT / APIS Peru
-            // For August 2026 (User's mockup date)
             var rates = new List<ExchangeRate>();
             var baseDate = new DateTime(req.Year, req.Month, 1, 0, 0, 0, DateTimeKind.Utc);
             
-            // Simple mockup generator based on User's provided SUNAT data
             decimal buyBase = 3.39m;
             decimal sellBase = 3.40m;
             var rand = new Random();
@@ -134,7 +131,7 @@ public class CatalogsController : ControllerBase
             for (int i = 0; i < DateTime.DaysInMonth(req.Year, req.Month); i++)
             {
                 var current = baseDate.AddDays(i);
-                if (current.DayOfWeek == DayOfWeek.Sunday) continue; // SUNAT doesn't publish on Sundays
+                if (current.DayOfWeek == DayOfWeek.Sunday) continue;
 
                 rates.Add(new ExchangeRate
                 {
@@ -147,14 +144,21 @@ public class CatalogsController : ControllerBase
                 });
             }
 
-            // Remove existing for this month
-            var existing = await _context.ExchangeRates
-                .Where(x => x.Date.Year == req.Year && x.Date.Month == req.Month)
-                .ToListAsync();
-            _context.ExchangeRates.RemoveRange(existing);
-            
-            await _context.ExchangeRates.AddRangeAsync(rates);
-            await _context.SaveChangesAsync();
+            if (_context != null)
+            {
+                var existing = await _context.ExchangeRates
+                    .Where(x => x.Date.Year == req.Year && x.Date.Month == req.Month)
+                    .ToListAsync();
+                _context.ExchangeRates.RemoveRange(existing);
+                
+                await _context.ExchangeRates.AddRangeAsync(rates);
+                await _context.SaveChangesAsync();
+            }
+            else
+            {
+                InMemoryExchangeRates.RemoveAll(x => x.Date.Year == req.Year && x.Date.Month == req.Month);
+                InMemoryExchangeRates.AddRange(rates);
+            }
 
             return Ok(new { message = $"Sincronizados {rates.Count} días de SUNAT para {req.Month}/{req.Year}.", rates });
         }
