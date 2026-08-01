@@ -107,18 +107,8 @@ try
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<KipuDbContext>();
     
-    // Si hay migraciones pendientes, las aplica; si no hay ninguna, crea el esquema desde cero
-    var pendingMigrations = await db.Database.GetPendingMigrationsAsync();
-    if (pendingMigrations.Any())
-    {
-        app.Logger.LogInformation("[DB] Aplicando {Count} migración(es) pendiente(s)...", pendingMigrations.Count());
-        await db.Database.MigrateAsync();
-    }
-    else
-    {
-        // Sin migraciones formales: crea el esquema si no existe (modo sin migraciones)
-        await db.Database.EnsureCreatedAsync();
-    }
+    // Intenta crear la base de datos y todo el esquema de tablas si no existe
+    await db.Database.EnsureCreatedAsync();
     
     app.Logger.LogInformation("[DB] PostgreSQL conectado y esquema sincronizado.");
 }
