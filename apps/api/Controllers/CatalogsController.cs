@@ -176,12 +176,50 @@ public class CatalogsController : ControllerBase
                 Console.WriteLine($"[SUNAT] Error consultando API: {ex.Message}");
             }
 
-            // Fallback estimado si la SUNAT devuelve vacío o bloquea la petición por Cookies/WAF
+            // 2. Intentar API secundaria estable (apis.net.pe / decolecta)
+            if (!rates.Any())
+            {
+                try
+                {
+                    using var client = new HttpClient();
+                    var response = await client.GetAsync($"https://api.apis.net.pe/v1/tipo-cambio-sunat?month={req.Month}&year={req.Year}");
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var apisData = await response.Content.ReadFromJsonAsync<List<ApisNetResponseItem>>();
+                        if (apisData != null && apisData.Count > 0)
+                        {
+                            foreach (var item in apisData)
+                            {
+                                if (DateTime.TryParse(item.fecha, out var parsedDate))
+                                {
+                                    rates.Add(new ExchangeRate
+                                    {
+                                        Id = Guid.NewGuid(),
+                                        Date = DateTime.SpecifyKind(parsedDate, DateTimeKind.Utc),
+                                        BuyRate = item.compra,
+                                        SellRate = item.venta,
+                                        Source = "APIs.net.pe (SUNAT)",
+                                        IsEstimated = false
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[APIs.net] Error consultando API alternativa: {ex.Message}");
+                }
+            }
+
+            // Fallback estimado ajustado al valor real de 2026 (aprox S/ 3.39 compra, S/ 3.41 venta)
             if (!rates.Any())
             {
                 var baseDate = new DateTime(req.Year, req.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-                decimal buyBase = 3.74m; // Promedio histórico de compra
-                decimal sellBase = 3.75m; // Promedio histórico de venta
+                
+                // Si es año 2026, usamos la base real de S/ 3.39 - 3.40
+                decimal buyBase = req.Year == 2026 ? 3.395m : 3.74m;
+                decimal sellBase = req.Year == 2026 ? 3.408m : 3.75m;
                 var rand = new Random();
 
                 for (int i = 0; i < DateTime.DaysInMonth(req.Year, req.Month); i++)
@@ -193,8 +231,8 @@ public class CatalogsController : ControllerBase
                     {
                         Id = Guid.NewGuid(),
                         Date = current,
-                        BuyRate = buyBase + (rand.Next(-10, 11) / 1000m),
-                        SellRate = sellBase + (rand.Next(-10, 11) / 1000m),
+                        BuyRate = buyBase + (rand.Next(-5, 6) / 1000m), // Fluctuación ligera de +/- 0.005
+                        SellRate = sellBase + (rand.Next(-5, 6) / 1000m),
                         Source = "SUNAT Estimado (Simulado)",
                         IsEstimated = true
                     });
@@ -291,4 +329,11 @@ public class SunatResponseItem
     public string fecDivisa { get; set; } = "";
     public decimal valCompra { get; set; }
     public decimal valVenta { get; set; }
+}
+
+public class ApisNetResponseItem
+{
+    public string fecha { get; set; } = "";
+    public decimal compra { get; set; }
+    public decimal venta { get; set; }
 }
