@@ -54,10 +54,14 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 
-app.MapGet("/", () => new { app = "Kipu Finanzas API", status = "Healthy", version = "1.0.0" });
+app.MapGet("/api/health", () => new { app = "Kipu Finanzas API", status = "Healthy", version = "1.0.0" });
+app.MapFallbackToFile("index.html");
 
 app.Run();
