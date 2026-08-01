@@ -22,6 +22,7 @@ builder.Services.AddScoped<ISunatExchangeRateService, SunatExchangeRateService>(
 builder.Services.AddScoped<IDeduplicationEngine, DeduplicationEngine>();
 builder.Services.AddScoped<IAlertEngineService, AlertEngineService>();
 builder.Services.AddScoped<IEmailIngestionService, EmailIngestionService>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IOpenAiService>(sp => new OpenAiService(
     builder.Configuration["OPENAI_API_KEY"] ?? "sk-proj-YOUR_KEY",
     builder.Configuration["OPENAI_MODEL"] ?? "gpt-4o"

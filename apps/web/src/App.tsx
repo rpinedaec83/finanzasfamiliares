@@ -3,6 +3,7 @@ import { ImportView } from './components/ImportView';
 import { AlertsView } from './components/AlertsView';
 import { IntegrationsView } from './components/IntegrationsView';
 import { AiAssistantView } from './components/AiAssistantView';
+import { AuditView } from './components/AuditView';
 import {
   MantineProvider,
   AppShell,
@@ -40,6 +41,7 @@ import {
   IconCloud,
   IconRobot,
   IconBell,
+  IconShieldCheck,
   IconPlus,
   IconTrendingUp,
   IconTrendingDown,
@@ -99,6 +101,7 @@ export function App() {
     { label: 'Integraciones', icon: IconCloud },
     { label: 'Alertas', icon: IconBell },
     { label: 'Asistente IA', icon: IconRobot },
+    { label: 'Auditoría', icon: IconShieldCheck },
   ];
 
   const handleAddExpense = () => {
@@ -232,6 +235,8 @@ export function App() {
               <IntegrationsView />
             ) : activeTab === 'Asistente IA' ? (
               <AiAssistantView />
+            ) : activeTab === 'Auditoría' ? (
+              <AuditView />
             ) : (
               <Stack gap="lg">
               {/* Header section & Quick Action Buttons */}
