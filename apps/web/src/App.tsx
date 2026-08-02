@@ -444,15 +444,21 @@ export function App() {
   // Migration fallback helpers for existing localStorage records without rawAmount/currency
   const getRawAmount = (t: any): number => {
     if (t.rawAmount !== undefined) return t.rawAmount;
+    if (typeof t.amount === 'number') return t.amount;
     if (!t.amount) return 0;
+    if (typeof t.amount !== 'string') return Number(t.amount) || 0;
     const val = parseFloat(t.amount.replace(/[^\d.-]/g, ''));
     return isNaN(val) ? 0 : val;
   };
   
   const getCurrency = (t: any): string => {
-    if (t.currency) return t.currency;
+    if (t.currency === 0 || t.currency === 'PEN') return 'PEN';
+    if (t.currency === 1 || t.currency === 'USD') return 'USD';
     if (!t.amount) return 'PEN';
-    if (t.amount.includes('$') || t.amount.includes('USD')) return 'USD';
+    if (typeof t.amount === 'number') return 'PEN';
+    if (typeof t.amount === 'string') {
+      if (t.amount.includes('$') || t.amount.includes('USD')) return 'USD';
+    }
     return 'PEN';
   };
 
