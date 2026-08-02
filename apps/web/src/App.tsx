@@ -412,8 +412,8 @@ export function App() {
 
   const formatCurrency = (val: number) => {
     return dashboardCurrency === 'PEN' 
-      ? `S/ ${val.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
-      : `$ ${val.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+      ? `S/ ${(val ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
+      : `$ ${(val ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
   };
 
   if (!token) {
@@ -778,7 +778,7 @@ export function App() {
                           <div key={g.id} style={{ marginBottom: 12 }}>
                             <Text size="sm" fw={600} color="teal">{g.name}</Text>
                             <Group justify="space-between" mb={4}>
-                              <Text size="xs">Ahorrado: {isPen ? 'S/' : '$'} {savedVal.toLocaleString()}</Text>
+                              <Text size="xs">Ahorrado: {isPen ? 'S/' : '$'} {(savedVal ?? 0).toLocaleString()}</Text>
                               <Text size="xs" fw={700}>{pct}%</Text>
                             </Group>
                             <Progress value={pct} color="blue" size="md" radius="xl" />

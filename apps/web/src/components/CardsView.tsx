@@ -202,7 +202,7 @@ export function CardsView({ creditCards, setCreditCards }: CardsViewProps) {
               <Text fw={700} style={{ color: '#f8fafc' }}>Deuda Total Estimada en Soles</Text>
             </Group>
             <Title order={3} style={{ color: '#a78bfa' }}>
-              S/ {totalDebt.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+              S/ {(totalDebt ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
             </Title>
           </Group>
         </Paper>
@@ -257,7 +257,7 @@ export function CardsView({ creditCards, setCreditCards }: CardsViewProps) {
                     <Group justify="space-between">
                       <Text size="xs" c="dimmed">Consumo utilizado ({usedPct}%)</Text>
                       <Text size="xs" fw={700} c={usedPct > 80 ? 'red' : usedPct > 50 ? 'orange' : 'teal'}>
-                        {sym} {used.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                        {sym} {(used ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                       </Text>
                     </Group>
                     <Progress

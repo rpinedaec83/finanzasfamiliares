@@ -150,7 +150,7 @@ export function InvestmentsView({ deposits, setDeposits }: InvestmentsViewProps)
                 <ThemeIcon color="teal" variant="light" size="md"><IconCoin size={16} /></ThemeIcon>
               </Group>
               <Title order={3} style={{ color: '#2dd4bf' }}>
-                S/ {totalPEN.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                S/ {(totalPEN ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
               </Title>
             </Paper>
           </Grid.Col>
@@ -161,7 +161,7 @@ export function InvestmentsView({ deposits, setDeposits }: InvestmentsViewProps)
                 <ThemeIcon color="green" variant="light" size="md"><IconTrendingUp size={16} /></ThemeIcon>
               </Group>
               <Title order={3} style={{ color: '#4ade80' }}>
-                + S/ {totalInterestPEN.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                + S/ {(totalInterestPEN ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
               </Title>
             </Paper>
           </Grid.Col>
@@ -248,7 +248,7 @@ export function InvestmentsView({ deposits, setDeposits }: InvestmentsViewProps)
                   <Paper p="xs" radius="sm" style={{ background: '#0f172a' }}>
                     <Group justify="space-between" mb={4}>
                       <Text size="xs" c="dimmed">Capital Depositado:</Text>
-                      <Text size="xs" fw={700}>{sym} {d.principal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</Text>
+                      <Text size="xs" fw={700}>{sym} {(d.principal ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</Text>
                     </Group>
                     <Group justify="space-between" mb={4}>
                       <Text size="xs" c="dimmed">TEA:</Text>
@@ -265,7 +265,7 @@ export function InvestmentsView({ deposits, setDeposits }: InvestmentsViewProps)
                     <Divider my={4} color="#1e293b" />
                     <Group justify="space-between">
                       <Text size="xs" c="dimmed" fw={700}>Total al vencimiento:</Text>
-                      <Text size="sm" fw={800} style={{ color: '#2dd4bf' }}>{sym} {totalReturn.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</Text>
+                      <Text size="sm" fw={800} style={{ color: '#2dd4bf' }}>{sym} {(totalReturn ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</Text>
                     </Group>
                     <Group justify="space-between" mt={4}>
                       <Text size="xs" c="dimmed">Periodo:</Text>
@@ -366,7 +366,7 @@ export function InvestmentsView({ deposits, setDeposits }: InvestmentsViewProps)
               <Group justify="space-between">
                 <Text size="xs">Total al vencimiento:</Text>
                 <Text size="sm" fw={800} c="green">
-                  {formCurrency === 'USD' ? '$' : 'S/'} {(Number(formPrincipal) + calcInterest(Number(formPrincipal), Number(formTEA), formStart, formEnd)).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                  {formCurrency === 'USD' ? '$' : 'S/'} {((Number(formPrincipal) || 0) + calcInterest(Number(formPrincipal) || 0, Number(formTEA) || 0, formStart, formEnd)).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                 </Text>
               </Group>
             </Paper>
