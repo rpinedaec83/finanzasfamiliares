@@ -36,6 +36,32 @@ public class BudgetsController : ControllerBase
 
         await _context.Budgets.AddAsync(budget);
         await _context.SaveChangesAsync();
+        return CreatedAtAction(nameof(GetBudgets), new { id = budget.Id }, budget);
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateBudget(Guid id, [FromBody] Budget updated)
+    {
+        var budget = await _context.Budgets.FirstOrDefaultAsync(b => b.Id == id);
+        if (budget == null) return NotFound();
+
+        budget.CategoryName = updated.CategoryName;
+        budget.LimitAmount = updated.LimitAmount;
+        budget.Month = updated.Month;
+        budget.Year = updated.Year;
+
+        await _context.SaveChangesAsync();
         return Ok(budget);
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteBudget(Guid id)
+    {
+        var budget = await _context.Budgets.FirstOrDefaultAsync(b => b.Id == id);
+        if (budget == null) return NotFound();
+
+        _context.Budgets.Remove(budget);
+        await _context.SaveChangesAsync();
+        return NoContent();
     }
 }

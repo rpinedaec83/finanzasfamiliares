@@ -414,10 +414,47 @@ export function App() {
   
   const dynamicBudgets = budgets.map((b) => {
     const executed = transactions
-      .filter((t) => (t.cat === b.cat || t.cat?.includes(b.cat)) && getRawAmount(t) < 0)
+      .filter((t) => {
+        const rawAmount = getRawAmount(t);
+        if (rawAmount >= 0) return false;
+        
+        const isCategoryMatch =
+          t.cat === b.categoryName ||
+          t.cat?.includes(b.categoryName) ||
+          t.category === b.categoryName ||
+          t.category?.includes(b.categoryName);
+
+        if (!isCategoryMatch) return false;
+
+        let txMonth = 8;
+        let txYear = 2026;
+        if (t.date) {
+          if (t.date.includes('/')) {
+            const parts = t.date.split('/');
+            txMonth = parseInt(parts[1], 10);
+            txYear = parseInt(parts[2], 10);
+          } else {
+            const dt = new Date(t.date);
+            txMonth = dt.getMonth() + 1;
+            txYear = dt.getFullYear();
+          }
+        }
+        return txMonth === b.month && txYear === b.year;
+      })
       .reduce((sum, t) => sum + convertAmount(Math.abs(getRawAmount(t)), getCurrency(t), t.date), 0);
-    const limitConverted = dashboardCurrency === 'PEN' ? b.limit : b.limit / getLatestRate().sellRate;
-    return { ...b, limit: limitConverted, executed };
+
+    const limit = Number(b.limitAmount || b.limit || 0);
+    const limitConverted = dashboardCurrency === 'PEN' ? limit : limit / getLatestRate().sellRate;
+    const pct = limitConverted > 0 ? Math.round((executed / limitConverted) * 100) : 0;
+    
+    return {
+      ...b,
+      category: b.categoryName,
+      limit: limitConverted,
+      executed,
+      pct,
+      color: pct >= 100 ? 'red' : pct >= 85 ? 'orange' : 'teal'
+    };
   });
 
   const formatCurrency = (val: number) => {
@@ -565,7 +602,15 @@ export function App() {
             ) : activeTab === 'Cambio de Moneda' ? (
               <ExchangesView onExchange={() => setModalType('exchange')} />
             ) : activeTab === 'Presupuestos' ? (
-              <BudgetsView />
+              <BudgetsView
+                budgets={budgets}
+                setBudgets={setBudgets}
+                transactions={transactions}
+                dashboardCurrency={dashboardCurrency}
+                convertAmount={convertAmount}
+                getRawAmount={getRawAmount}
+                getCurrency={getCurrency}
+              />
             ) : activeTab === 'Metas de Ahorro' ? (
               <GoalsView />
             ) : activeTab === 'Importación & OCR' ? (
