@@ -347,7 +347,18 @@ export function App() {
 
   const openEditTx = (tx: any) => {
     setEditTxId(tx.id);
-    setEditTxType(tx.type?.toUpperCase() || 'GASTO');
+    
+    let displayType = 'GASTO';
+    const rawType = tx.type;
+    if (rawType === 0 || rawType === 'Ingreso' || rawType?.toString().toUpperCase().includes('INGRESO')) {
+      displayType = 'INGRESO';
+    } else if (rawType === 2 || rawType === 'Transferencia' || rawType?.toString().toUpperCase().includes('TRANSFERENCIA')) {
+      displayType = 'TRANSFERENCIA';
+    } else if (rawType === 3 || rawType?.toString().toUpperCase().includes('CAMBIO') || rawType?.toString().toUpperCase().includes('EXCHANGE')) {
+      displayType = 'CAMBIO MONEDA';
+    }
+    setEditTxType(displayType);
+
     setEditTxSavingsGoalId(tx.savingsGoalId || tx.SavingsGoalId || null);
     setEditTxCat(tx.cat || 'Varios / Otros');
     if (tx.account?.includes(' ➔ ')) {
