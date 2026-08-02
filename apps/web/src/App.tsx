@@ -422,10 +422,6 @@ export function App() {
 
   const patrimonioTotal = patrimonioCuentas + patrimonioTransacciones + patrimonioDeposits;
 
-  const totalBudgetLimitOriginal = 12000;
-  const totalBudgetLimit = dashboardCurrency === 'PEN' ? totalBudgetLimitOriginal : totalBudgetLimitOriginal / getLatestRate().sellRate;
-  const totalBudgetExecutedPct = Math.min(100, Math.round((gastosTotales / totalBudgetLimit) * 100));
-  
   const dynamicBudgets = budgets.map((b) => {
     const executed = transactions
       .filter((t) => {
@@ -463,6 +459,7 @@ export function App() {
     
     return {
       ...b,
+      cat: b.categoryName,
       category: b.categoryName,
       limit: limitConverted,
       executed,
@@ -470,6 +467,10 @@ export function App() {
       color: pct >= 100 ? 'red' : pct >= 85 ? 'orange' : 'teal'
     };
   });
+
+  const totalBudgetLimit = dynamicBudgets.reduce((sum, b) => sum + b.limit, 0);
+  const totalBudgetExecuted = dynamicBudgets.reduce((sum, b) => sum + b.executed, 0);
+  const totalBudgetExecutedPct = totalBudgetLimit > 0 ? Math.min(100, Math.round((totalBudgetExecuted / totalBudgetLimit) * 100)) : 0;
 
   const formatCurrency = (val: number) => {
     return dashboardCurrency === 'PEN' 
@@ -817,7 +818,7 @@ export function App() {
                           Presupuesto de Agosto
                         </Text>
                         <Text size="xs" c="teal" fw={700}>
-                          {formatCurrency(gastosTotales)} / {formatCurrency(totalBudgetLimit)}
+                          {formatCurrency(totalBudgetExecuted)} / {formatCurrency(totalBudgetLimit)}
                         </Text>
                       </Group>
                       <Progress value={totalBudgetExecutedPct} color="teal" size="lg" radius="xl" animated mb="md" />
