@@ -339,7 +339,7 @@ export function App() {
   const [editTxSavingsGoalId, setEditTxSavingsGoalId] = useState<string | null>(null);
   const [expenseAccountName, setExpenseAccountName] = useState<string | null>(null);
 
-  const [editTxId, setEditTxId] = useState<number | null>(null);
+  const [editTxId, setEditTxId] = useState<string | number | null>(null);
   const [editTxType, setEditTxType] = useState<string>('Gasto');
   const [editTxCat, setEditTxCat] = useState<string>('Otros');
   const [editTxOrigin, setEditTxOrigin] = useState<string>('BCP Cuenta Sueldo PEN');
@@ -361,23 +361,58 @@ export function App() {
     setModalType('editTx');
   };
 
-  const handleUpdateTx = () => {
-    setTransactions(transactions.map(t => {
-      if (t.id === editTxId) {
-        const isTransfer = editTxType.includes('TRANSFERENCIA');
-        return { 
-           ...t, 
-           type: editTxType, 
-           cat: isTransfer ? 'Transferencia' : editTxCat,
-           account: isTransfer ? `${editTxOrigin} ➔ ${editTxDest}` : t.account,
-           color: editTxType.includes('GASTO') ? 'red' : editTxType.includes('INGRESO') ? 'green' : editTxType.includes('TRANSFERENCIA') ? 'gray' : 'blue',
-           savingsGoalId: editTxSavingsGoalId,
-           SavingsGoalId: editTxSavingsGoalId
-        };
+  const handleUpdateTx = async () => {
+    if (!editTxId) return;
+
+    const original = transactions.find(t => t.id === editTxId);
+    if (!original) return;
+
+    let typeInt = 1; // Gasto por defecto
+    const typeUpper = editTxType.toUpperCase();
+    if (typeUpper.includes('INGRESO')) {
+      typeInt = 0;
+    } else if (typeUpper.includes('TRANSFERENCIA')) {
+      typeInt = 2;
+    } else if (typeUpper.includes('COMISION')) {
+      typeInt = 3;
+    }
+
+    const matchingAccount = accounts.find(a => a.name === editTxOrigin);
+    const matchingCard = creditCards.find(c => c.name === editTxOrigin);
+    
+    const accountId = matchingAccount ? matchingAccount.id : (accounts[0]?.id || original.accountId || '00000000-0000-0000-0000-000000000000');
+    const creditCardId = matchingCard ? matchingCard.id : null;
+
+    const payload = {
+      ...original,
+      type: typeInt,
+      category: editTxCat,
+      accountId,
+      creditCardId,
+      savingsGoalId: editTxSavingsGoalId || null,
+      descriptionNormalized: original.descriptionNormalized || original.desc || '',
+      descriptionOriginal: original.descriptionOriginal || original.desc || '',
+      amount: original.rawAmount ?? (typeof original.amount === 'number' ? original.amount : parseFloat(original.amount?.replace(/[^\d.-]/g, '')) || 0),
+      currency: (original.currency === 'USD' || original.currency === 1 || original.currency === 'USD') ? 1 : 0,
+    };
+
+    try {
+      const response = await fetch(`/api/transactions/${editTxId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al actualizar la transacción');
       }
-      return t;
-    }));
-    setModalType(null);
+
+      loadUserData();
+      setModalType(null);
+    } catch (error) {
+      console.error(error);
+      alert('Error al guardar la actualización del movimiento en la base de datos.');
+    }
   };
 
   const navItems = [

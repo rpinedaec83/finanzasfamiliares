@@ -89,6 +89,58 @@ public class TransactionsController : ControllerBase
         return Ok(transactions);
     }
 
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateTransaction(Guid id, [FromBody] Transaction updated)
+    {
+        if (_context != null)
+        {
+            var tx = await _context.Transactions.FirstOrDefaultAsync(t => t.Id == id);
+            if (tx == null) return NotFound();
+
+            tx.Type = updated.Type;
+            tx.Category = updated.Category;
+            tx.AccountId = updated.AccountId;
+            tx.CreditCardId = updated.CreditCardId;
+            tx.SavingsGoalId = updated.SavingsGoalId;
+            tx.DescriptionNormalized = updated.DescriptionNormalized;
+            tx.DescriptionOriginal = updated.DescriptionOriginal;
+            tx.Amount = updated.Amount;
+            tx.Currency = updated.Currency;
+            tx.ConvertedAmount = updated.ConvertedAmount;
+            tx.ExchangeRate = updated.ExchangeRate;
+            if (updated.OperationDate != default)
+            {
+                tx.OperationDate = DateTime.SpecifyKind(updated.OperationDate, DateTimeKind.Utc);
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok(tx);
+        }
+
+        var inMem = InMemoryTransactions.FirstOrDefault(t => t.Id == id);
+        if (inMem != null)
+        {
+            inMem.Type = updated.Type;
+            inMem.Category = updated.Category;
+            inMem.AccountId = updated.AccountId;
+            inMem.CreditCardId = updated.CreditCardId;
+            inMem.SavingsGoalId = updated.SavingsGoalId;
+            inMem.DescriptionNormalized = updated.DescriptionNormalized;
+            inMem.DescriptionOriginal = updated.DescriptionOriginal;
+            inMem.Amount = updated.Amount;
+            inMem.Currency = updated.Currency;
+            inMem.ConvertedAmount = updated.ConvertedAmount;
+            inMem.ExchangeRate = updated.ExchangeRate;
+            if (updated.OperationDate != default)
+            {
+                inMem.OperationDate = DateTime.SpecifyKind(updated.OperationDate, DateTimeKind.Utc);
+            }
+            return Ok(inMem);
+        }
+
+        return NotFound();
+    }
+
     [HttpDelete]
     public async Task<IActionResult> ClearAllTransactions()
     {
