@@ -32,6 +32,7 @@ public class KipuDbContext : DbContext
     public DbSet<Budget> Budgets => Set<Budget>();
     public DbSet<SavingsGoal> SavingsGoals => Set<SavingsGoal>();
     public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
+    public DbSet<FixedTermDeposit> FixedTermDeposits => Set<FixedTermDeposit>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -47,6 +48,7 @@ public class KipuDbContext : DbContext
             modelBuilder.Entity<CurrencyExchangeOperation>().HasQueryFilter(e => e.FamilyId == _currentFamilyId.Value);
             modelBuilder.Entity<Budget>().HasQueryFilter(b => b.FamilyId == _currentFamilyId.Value);
             modelBuilder.Entity<SavingsGoal>().HasQueryFilter(g => g.FamilyId == _currentFamilyId.Value);
+            modelBuilder.Entity<FixedTermDeposit>().HasQueryFilter(d => d.FamilyId == _currentFamilyId.Value);
         }
 
         // Datos Semilla de Bancos en Perú

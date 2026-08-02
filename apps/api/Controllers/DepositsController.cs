@@ -1,5 +1,7 @@
+using KipuFinanzas.Api.Data;
 using KipuFinanzas.SharedContracts;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace KipuFinanzas.Api.Controllers;
 
@@ -7,44 +9,43 @@ namespace KipuFinanzas.Api.Controllers;
 [Route("api/[controller]")]
 public class DepositsController : ControllerBase
 {
-    private static readonly List<FixedTermDeposit> SampleDeposits = new()
+    private readonly KipuDbContext _context;
+
+    public DepositsController(KipuDbContext context)
     {
-        new FixedTermDeposit
-        {
-            Id = Guid.NewGuid(),
-            BankName = "BCP",
-            AccountHolder = "Robert Pineda",
-            InitialPrincipal = 20000.00m,
-            Currency = Currency.PEN,
-            AnnualRate = 6.50m,
-            OpeningDate = DateTime.UtcNow.AddMonths(-6),
-            MaturityDate = DateTime.UtcNow.AddDays(15),
-            ExpectedInterestManual = 650.00m, // Registro estrictamente manual
-            Status = "Active"
-        }
-    };
+        _context = context;
+    }
 
     [HttpGet]
-    public IActionResult GetDeposits()
+    public async Task<IActionResult> GetDeposits()
     {
-        return Ok(SampleDeposits);
+        var deposits = await _context.FixedTermDeposits.ToListAsync();
+        return Ok(deposits);
     }
 
     [HttpPost]
-    public IActionResult CreateDeposit([FromBody] FixedTermDeposit deposit)
+    public async Task<IActionResult> CreateDeposit([FromBody] FixedTermDeposit deposit)
     {
         deposit.Id = Guid.NewGuid();
         deposit.Status = "Active";
-        SampleDeposits.Add(deposit);
+
+        var familyIdClaim = User.FindFirst("FamilyId")?.Value;
+        if (Guid.TryParse(familyIdClaim, out var familyId))
+        {
+            deposit.FamilyId = familyId;
+        }
+
+        await _context.FixedTermDeposits.AddAsync(deposit);
+        await _context.SaveChangesAsync();
         return CreatedAtAction(nameof(GetDeposits), new { id = deposit.Id }, deposit);
     }
 
     public record SettleDepositRequest(decimal ReceivedInterestManual);
 
     [HttpPost("{id}/settle")]
-    public IActionResult SettleDeposit(Guid id, [FromBody] SettleDepositRequest request)
+    public async Task<IActionResult> SettleDeposit(Guid id, [FromBody] SettleDepositRequest request)
     {
-        var deposit = SampleDeposits.FirstOrDefault(d => d.Id == id);
+        var deposit = await _context.FixedTermDeposits.FirstOrDefaultAsync(d => d.Id == id);
         if (deposit == null)
         {
             return NotFound("Depósito a plazo no encontrado.");
@@ -52,6 +53,7 @@ public class DepositsController : ControllerBase
 
         deposit.ReceivedInterestManual = request.ReceivedInterestManual;
         deposit.Status = "Settled";
+        await _context.SaveChangesAsync();
         return Ok(deposit);
     }
 }

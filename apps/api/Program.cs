@@ -140,6 +140,25 @@ try
     
     // Intenta crear la base de datos y todo el esquema de tablas si no existe
     await db.Database.EnsureCreatedAsync();
+
+    // Crear la tabla FixedTermDeposits manualmente si ya existía la base de datos previa
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""FixedTermDeposits"" (
+            ""Id"" UUID PRIMARY KEY,
+            ""FamilyId"" UUID NOT NULL,
+            ""BankName"" VARCHAR(100) NOT NULL,
+            ""AccountHolder"" VARCHAR(200) NOT NULL,
+            ""InitialPrincipal"" NUMERIC(18,2) NOT NULL,
+            ""Currency"" INTEGER NOT NULL,
+            ""AnnualRate"" NUMERIC(18,2) NOT NULL,
+            ""OpeningDate"" TIMESTAMP WITH TIME ZONE NOT NULL,
+            ""MaturityDate"" TIMESTAMP WITH TIME ZONE NOT NULL,
+            ""DestinationAccountId"" UUID NULL,
+            ""ExpectedInterestManual"" NUMERIC(18,2) NULL,
+            ""ReceivedInterestManual"" NUMERIC(18,2) NULL,
+            ""Status"" VARCHAR(50) NOT NULL
+        );
+    ");
     
     app.Logger.LogInformation("[DB] PostgreSQL conectado y esquema sincronizado.");
 }

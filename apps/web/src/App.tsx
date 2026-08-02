@@ -167,12 +167,14 @@ export function App() {
       fetch('/api/transactions').then(r => r.json()).catch(() => []),
       fetch('/api/budgets').then(r => r.json()).catch(() => []),
       fetch('/api/goals').then(r => r.json()).catch(() => []),
-    ]).then(([accountsData, cardsData, txsData, budgetsData, goalsData]) => {
+      fetch('/api/deposits').then(r => r.json()).catch(() => []),
+    ]).then(([accountsData, cardsData, txsData, budgetsData, goalsData, depositsData]) => {
       setAccounts((accountsData || []).map(normalizeAccount));
       setCreditCards(cardsData || []);
       setTransactions(txsData || []);
       setBudgets(budgetsData || []);
       setGoals(goalsData || []);
+      setDeposits(depositsData || []);
       setLoadingData(false);
     }).catch(() => {
       setLoadingData(false);
@@ -396,7 +398,15 @@ export function App() {
   const patrimonioTransacciones = transactions
     .reduce((sum, t) => sum + convertAmount(getRawAmount(t), getCurrency(t), t.date), 0);
 
-  const patrimonioTotal = patrimonioCuentas + patrimonioTransacciones;
+  const patrimonioDeposits = deposits
+    .filter((d) => d.status === 'Active' || d.status === 'Matured')
+    .reduce((sum, d) => {
+      const principal = d.initialPrincipal ?? d.InitialPrincipal ?? 0;
+      const currencyStr = (d.currency === 0 || d.currency === 'PEN') ? 'PEN' : 'USD';
+      return sum + convertCurrentBalance(principal, currencyStr);
+    }, 0);
+
+  const patrimonioTotal = patrimonioCuentas + patrimonioTransacciones + patrimonioDeposits;
 
   const totalBudgetLimitOriginal = 12000;
   const totalBudgetLimit = dashboardCurrency === 'PEN' ? totalBudgetLimitOriginal : totalBudgetLimitOriginal / getLatestRate().sellRate;
