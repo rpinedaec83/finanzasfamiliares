@@ -940,7 +940,14 @@ export function App() {
                               <Text size="xs" c="dimmed">{tx.cat}</Text>
                             </Table.Td>
                             <Table.Td>{tx.account}</Table.Td>
-                            <Table.Td><Badge color={tx.color} variant="light">{tx.type}</Badge></Table.Td>
+                            <Table.Td>
+                              <Badge color={tx.color} variant="light">
+                                {tx.type === 0 || tx.type === 'Ingreso' ? 'Ingreso' : 
+                                 tx.type === 1 || tx.type === 'Gasto' ? 'Gasto' : 
+                                 tx.type === 2 || tx.type === 'Transferencia' ? 'Transferencia' : 
+                                 tx.type === 3 || tx.type === 'Comisión' ? 'Comisión' : tx.type}
+                              </Badge>
+                            </Table.Td>
                             <Table.Td style={{ textAlign: 'right', fontWeight: 700 }}>{tx.amount}</Table.Td>
                             <Table.Td>
                               <ActionIcon variant="subtle" color="gray" onClick={() => openEditTx(tx)}>
