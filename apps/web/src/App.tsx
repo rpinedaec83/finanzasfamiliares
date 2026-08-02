@@ -153,9 +153,9 @@ export function App() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [creditCards, setCreditCards] = useState<any[]>([]);
-  const [deposits, setDeposits] = useState<any[]>([]);
-  const [budgets, setBudgets] = useState<any[]>([]);
+  const [deposits, setDeposits] = useState<any[]>([]);  const [budgets, setBudgets] = useState<any[]>([]);
   const [goals, setGoals] = useState<any[]>([]);
+  const [transfers, setTransfers] = useState<any[]>([]);
 
   const loadUserData = () => {
     if (!token) return;
@@ -168,18 +168,20 @@ export function App() {
       fetch('/api/budgets').then(r => r.json()).catch(() => []),
       fetch('/api/goals').then(r => r.json()).catch(() => []),
       fetch('/api/deposits').then(r => r.json()).catch(() => []),
-    ]).then(([accountsData, cardsData, txsData, budgetsData, goalsData, depositsData]) => {
+      fetch('/api/transfers').then(r => r.json()).catch(() => []),
+    ]).then(([accountsData, cardsData, txsData, budgetsData, goalsData, depositsData, transfersData]) => {
       setAccounts((accountsData || []).map(normalizeAccount));
       setCreditCards(cardsData || []);
       setTransactions(txsData || []);
       setBudgets(budgetsData || []);
       setGoals(goalsData || []);
       setDeposits((depositsData || []).map(normalizeDeposit));
+      setTransfers(transfersData || []);
       setLoadingData(false);
     }).catch(() => {
       setLoadingData(false);
     });
-  };
+  };;
 
   useEffect(() => {
     loadUserData();
@@ -559,7 +561,7 @@ export function App() {
             ) : activeTab === 'Inversiones & Plazos' ? (
               <InvestmentsView deposits={deposits} setDeposits={setDeposits} />
             ) : activeTab === 'Transferencias' ? (
-              <TransfersView onTransfer={() => setModalType('transfer')} />
+              <TransfersView transfers={transfers} accounts={accounts} onTransfer={() => setModalType('transfer')} />
             ) : activeTab === 'Cambio de Moneda' ? (
               <ExchangesView onExchange={() => setModalType('exchange')} />
             ) : activeTab === 'Presupuestos' ? (
