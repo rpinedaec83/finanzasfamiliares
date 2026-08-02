@@ -244,8 +244,20 @@ export function App() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleClearTransactions = () => {
-    setTransactions([]);
+  const handleClearTransactions = async () => {
+    try {
+      const response = await fetch('/api/transactions', {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Error al limpiar movimientos');
+      }
+      setTransactions([]);
+      loadUserData();
+    } catch (error) {
+      console.error(error);
+      alert('Error al limpiar los movimientos de la base de datos.');
+    }
   };
 
   const handleImportItems = async (newItems: any[]) => {
