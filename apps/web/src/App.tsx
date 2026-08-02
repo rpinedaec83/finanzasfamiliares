@@ -205,9 +205,70 @@ export function App() {
     setTransactions([]);
   };
 
-  const handleImportItems = (newItems: any[]) => {
-    setTransactions((prev) => [...newItems, ...prev]);
-    setActiveTab('Movimientos');
+  const handleImportItems = async (newItems: any[]) => {
+    const mappedTxs = newItems.map((item) => {
+      // Intentar encontrar cuenta o tarjeta coincidente por nombre
+      const matchingAccount = accounts.find(a => a.name === item.account);
+      const matchingCard = creditCards.find(c => c.name === item.account);
+
+      const accountId = matchingAccount ? matchingAccount.id : (accounts[0]?.id || '00000000-0000-0000-0000-000000000000');
+      const creditCardId = matchingCard ? matchingCard.id : null;
+
+      let operationDate = new Date().toISOString();
+      if (item.date) {
+        if (item.date.includes('/')) {
+          const [d, m, y] = item.date.split('/');
+          operationDate = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d))).toISOString();
+        } else {
+          operationDate = new Date(item.date).toISOString();
+        }
+      }
+
+      // 0 = Income, 1 = Expense, 2 = Transfer
+      let type = 1;
+      if (item.type === 'Ingreso' || item.type?.toUpperCase() === 'INGRESO') {
+        type = 0;
+      } else if (item.type === 'Transferencia' || item.type?.toUpperCase() === 'TRANSFERENCIA') {
+        type = 2;
+      }
+
+      const currency = (item.currency === 'USD' || item.currency === 1) ? 1 : 0;
+
+      return {
+        accountId,
+        creditCardId,
+        savingsGoalId: item.savingsGoalId || null,
+        operationDate,
+        descriptionOriginal: item.rawDesc || item.desc || '',
+        descriptionNormalized: item.normalizedDesc || item.desc || '',
+        amount: item.rawAmount,
+        currency,
+        convertedAmount: item.rawAmount,
+        exchangeRate: 1.0,
+        type,
+        status: 0,
+        category: item.cat || 'Varios / Otros',
+        merchant: ''
+      };
+    });
+
+    try {
+      const response = await fetch('/api/transactions/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(mappedTxs),
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al importar movimientos');
+      }
+
+      loadUserData();
+      setActiveTab('Movimientos');
+    } catch (error) {
+      console.error(error);
+      alert('Hubo un error al guardar los movimientos en la base de datos.');
+    }
   };
 
   // Modals state
@@ -233,6 +294,7 @@ export function App() {
   const [expenseSavingsGoalId, setExpenseSavingsGoalId] = useState<string | null>(null);
   const [transferSavingsGoalId, setTransferSavingsGoalId] = useState<string | null>(null);
   const [editTxSavingsGoalId, setEditTxSavingsGoalId] = useState<string | null>(null);
+  const [expenseAccountName, setExpenseAccountName] = useState<string | null>(null);
 
   const [editTxId, setEditTxId] = useState<number | null>(null);
   const [editTxType, setEditTxType] = useState<string>('Gasto');
@@ -293,25 +355,53 @@ export function App() {
     { label: 'Auditoría', icon: IconShieldCheck },
   ];
 
-  const handleAddExpense = () => {
+  const handleAddExpense = async () => {
     if (!expenseDesc || Number(expenseAmount) <= 0) return;
-    const newTx = {
-      id: Date.now(),
-      date: '01/08/2026',
-      desc: expenseDesc,
-      cat: expenseCat || 'Otros',
-      account: 'BCP Sueldo PEN',
-      type: 'Gasto',
-      amount: `- S/ ${Number(expenseAmount).toFixed(2)}`,
-      color: 'red',
-      savingsGoalId: expenseSavingsGoalId,
-      SavingsGoalId: expenseSavingsGoalId
+
+    const selectedName = expenseAccountName || accountNames[0];
+    const matchingAccount = accounts.find(a => a.name === selectedName);
+    const matchingCard = creditCards.find(c => c.name === selectedName);
+
+    const accountId = matchingAccount ? matchingAccount.id : (accounts[0]?.id || '00000000-0000-0000-0000-000000000000');
+    const creditCardId = matchingCard ? matchingCard.id : null;
+
+    const payload = {
+      accountId,
+      creditCardId,
+      savingsGoalId: expenseSavingsGoalId || null,
+      operationDate: new Date().toISOString(),
+      descriptionOriginal: expenseDesc,
+      descriptionNormalized: expenseDesc.toUpperCase(),
+      amount: -Number(expenseAmount),
+      currency: 0, // PEN
+      convertedAmount: -Number(expenseAmount),
+      exchangeRate: 1.0,
+      type: 1, // Expense
+      status: 0,
+      category: expenseCat || 'Otros',
+      merchant: ''
     };
-    setTransactions([newTx, ...transactions]);
-    setExpenseDesc('');
-    setExpenseAmount(0);
-    setExpenseSavingsGoalId(null);
-    setModalType(null);
+
+    try {
+      const response = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al registrar gasto');
+      }
+
+      loadUserData();
+      setExpenseDesc('');
+      setExpenseAmount(0);
+      setExpenseSavingsGoalId(null);
+      setModalType(null);
+    } catch (error) {
+      console.error(error);
+      alert('Error al guardar el gasto en la base de datos.');
+    }
   };
 
   const handleAddTransfer = () => {
@@ -878,7 +968,12 @@ export function App() {
             <TextInput label="Comercio / Descripción" placeholder="ej. Wong, Primax, Netflix" value={expenseDesc} onChange={(e) => setExpenseDesc(e.target.value)} required />
             <Select label="Categoría" data={['Supermercado', 'Combustible & Transporte', 'Restaurantes', 'Fotografía & Tecnología', 'Streaming', 'Salud', 'Educación']} value={expenseCat} onChange={setExpenseCat} required />
             <NumberInput label="Monto en Soles (S/)" placeholder="0.00" value={expenseAmount} onChange={setExpenseAmount} min={0} decimalScale={2} required />
-            <Select label="Cuenta o Tarjeta de Origen" data={accountNames} defaultValue={accountNames[0]} />
+            <Select 
+              label="Cuenta o Tarjeta de Origen" 
+              data={accountNames} 
+              value={expenseAccountName || accountNames[0]} 
+              onChange={setExpenseAccountName} 
+            />
             <Select
               label="Vincular a Meta de Ahorro"
               placeholder="Selecciona una meta (opcional)"

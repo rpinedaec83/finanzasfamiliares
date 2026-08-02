@@ -37,6 +37,14 @@ public class TransactionsController : ControllerBase
     public async Task<IActionResult> CreateTransaction([FromBody] Transaction transaction)
     {
         transaction.Id = Guid.NewGuid();
+        transaction.OperationDate = DateTime.SpecifyKind(transaction.OperationDate, DateTimeKind.Utc);
+
+        var familyIdClaim = User.FindFirst("FamilyId")?.Value;
+        if (Guid.TryParse(familyIdClaim, out var familyId))
+        {
+            transaction.FamilyId = familyId;
+        }
+
         if (_context != null)
         {
             try
@@ -49,6 +57,36 @@ public class TransactionsController : ControllerBase
 
         InMemoryTransactions.Add(transaction);
         return Ok(transaction);
+    }
+
+    [HttpPost("bulk")]
+    public async Task<IActionResult> CreateTransactionsBulk([FromBody] List<Transaction> transactions)
+    {
+        var familyIdClaim = User.FindFirst("FamilyId")?.Value;
+        Guid.TryParse(familyIdClaim, out var familyId);
+
+        foreach (var transaction in transactions)
+        {
+            transaction.Id = Guid.NewGuid();
+            transaction.FamilyId = familyId;
+            transaction.OperationDate = DateTime.SpecifyKind(transaction.OperationDate, DateTimeKind.Utc);
+            
+            if (_context != null)
+            {
+                await _context.Transactions.AddAsync(transaction);
+            }
+            else
+            {
+                InMemoryTransactions.Add(transaction);
+            }
+        }
+
+        if (_context != null)
+        {
+            await _context.SaveChangesAsync();
+        }
+
+        return Ok(transactions);
     }
 
     [HttpDelete]
