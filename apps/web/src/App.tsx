@@ -909,7 +909,14 @@ export function App() {
             ) : activeTab === 'Inversiones & Plazos' ? (
               <InvestmentsView deposits={deposits} setDeposits={setDeposits} />
             ) : activeTab === 'Transferencias' ? (
-              <TransfersView transfers={transfers} accounts={accounts} onTransfer={() => setModalType('transfer')} />
+              <TransfersView
+                transfers={transfers}
+                accounts={accounts}
+                creditCards={creditCards}
+                deposits={deposits}
+                transactions={transactions}
+                onTransfer={() => setModalType('transfer')}
+              />
             ) : activeTab === 'Cambio de Moneda' ? (
               <ExchangesView onExchange={() => setModalType('exchange')} />
             ) : activeTab === 'Presupuestos' ? (
