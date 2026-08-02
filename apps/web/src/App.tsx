@@ -170,9 +170,52 @@ export function App() {
       fetch('/api/deposits').then(r => r.json()).catch(() => []),
       fetch('/api/transfers').then(r => r.json()).catch(() => []),
     ]).then(([accountsData, cardsData, txsData, budgetsData, goalsData, depositsData, transfersData]) => {
-      setAccounts((accountsData || []).map(normalizeAccount));
-      setCreditCards(cardsData || []);
-      setTransactions(txsData || []);
+      const normAccounts = (accountsData || []).map(normalizeAccount);
+      const normCards = cardsData || [];
+      
+      setAccounts(normAccounts);
+      setCreditCards(normCards);
+      
+      const normTxs = (txsData || []).map((t: any) => {
+        const matchingAccount = normAccounts.find((a: any) => a.id === t.accountId || a.id === t.AccountId);
+        const matchingCard = normCards.find((c: any) => c.id === t.creditCardId || c.id === t.CreditCardId);
+        const accountName = matchingAccount 
+          ? matchingAccount.name 
+          : (matchingCard ? matchingCard.name : 'Cuenta Desconocida');
+
+        // Formatear monto para visualización
+        const isPen = t.currency === 0 || t.currency === 'PEN';
+        const currencySymbol = isPen ? 'S/' : '$';
+        const amountVal = typeof t.amount === 'number' ? t.amount : (Number(t.amount) || 0);
+        const isExpense = amountVal < 0;
+        const absVal = Math.abs(amountVal).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const amountFormatted = isExpense ? `- ${currencySymbol} ${absVal}` : `+ ${currencySymbol} ${absVal}`;
+        const color = isExpense ? 'red' : (t.type === 2 ? 'gray' : 'teal');
+
+        // Parsear fecha
+        let dateStr = '01/08/2026';
+        if (t.operationDate) {
+          const dt = new Date(t.operationDate);
+          const day = String(dt.getUTCDate()).padStart(2, '0');
+          const month = String(dt.getUTCMonth() + 1).padStart(2, '0');
+          const year = dt.getUTCFullYear();
+          dateStr = `${day}/${month}/${year}`;
+        } else if (t.date) {
+          dateStr = t.date;
+        }
+
+        return {
+          ...t,
+          date: dateStr,
+          desc: t.descriptionNormalized || t.descriptionOriginal || t.desc || 'Movimiento sin descripción',
+          cat: t.category || t.cat || 'Otros',
+          account: accountName,
+          amount: amountFormatted,
+          color,
+          rawAmount: amountVal,
+        };
+      });
+      setTransactions(normTxs);
       setBudgets(budgetsData || []);
       setGoals(goalsData || []);
       setDeposits((depositsData || []).map(normalizeDeposit));
