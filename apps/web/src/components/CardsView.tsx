@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Title,
   Text,
@@ -16,6 +16,7 @@ import {
   NumberInput,
   Select,
   ActionIcon,
+  Divider,
 } from '@mantine/core';
 import {
   IconCreditCard,
@@ -40,6 +41,10 @@ interface CreditCard {
 interface CardsViewProps {
   creditCards: CreditCard[];
   setCreditCards: (cards: CreditCard[]) => void;
+  transactions: any[];
+  getRawAmount: (t: any) => number;
+  dashboardCurrency: 'PEN' | 'USD';
+  convertAmount: (amount: number, fromCurrency: string, dateStr: string) => number;
 }
 
 const COLORS: Record<string, string> = {
@@ -56,7 +61,14 @@ function getCardColor(name: string): string {
 
 const API_BASE = '/api/creditcards';
 
-export function CardsView({ creditCards, setCreditCards }: CardsViewProps) {
+export function CardsView({
+  creditCards,
+  setCreditCards,
+  transactions,
+  getRawAmount,
+  dashboardCurrency,
+  convertAmount,
+}: CardsViewProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editCard, setEditCard] = useState<CreditCard | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -67,9 +79,48 @@ export function CardsView({ creditCards, setCreditCards }: CardsViewProps) {
   const [formLastFour, setFormLastFour] = useState('');
   const [formCurrency, setFormCurrency] = useState<'PEN' | 'USD'>('PEN');
   const [formLimit, setFormLimit] = useState<number | string>(5000);
-  const [formAvailable, setFormAvailable] = useState<number | string>(5000);
   const [formClosingDay, setFormClosingDay] = useState<number | string>(20);
   const [formDueDay, setFormDueDay] = useState<number | string>(10);
+
+  // Calcular deudas y saldos dinámicamente según transacciones
+  const computedCards = useMemo(() => {
+    return creditCards.map((card) => {
+      const cardTxs = transactions.filter((t) => t.creditCardId === card.id || t.CreditCardId === card.id);
+
+      // En nuestro sistema, los gastos son montos negativos (ej. -25.90) 
+      // y los pagos o transferencias recibidas son positivos (ej. 50.00).
+      // Por ende, sumando -t.amount acumulamos la deuda real.
+      const usedRaw = cardTxs.reduce((sum, t) => {
+        const amt = getRawAmount(t);
+        return sum - amt;
+      }, 0);
+
+      const limit = Number(card.creditLimit || 0);
+      const currentDebt = usedRaw > 0 ? usedRaw : 0;
+      const saldoAFavor = usedRaw < 0 ? Math.abs(usedRaw) : 0;
+      const availableLimit = limit - currentDebt + saldoAFavor;
+      const usedPct = limit > 0 ? Math.min(100, Math.round((currentDebt / limit) * 100)) : 0;
+
+      return {
+        ...card,
+        currentDebt,
+        saldoAFavor,
+        availableLimit,
+        usedPct,
+        transactionsCount: cardTxs.length,
+      };
+    });
+  }, [creditCards, transactions, getRawAmount]);
+
+  // Deuda total consolidada en la divisa del dashboard
+  const totalDebtConsolidated = useMemo(() => {
+    return computedCards.reduce((sum, c) => {
+      const cur = c.mainCurrency;
+      // Convertir deuda de la tarjeta a la moneda del dashboard
+      const converted = convertAmount(c.currentDebt, cur, new Date().toISOString());
+      return sum + converted;
+    }, 0);
+  }, [computedCards, convertAmount, dashboardCurrency]);
 
   const openNew = () => {
     setEditCard(null);
@@ -77,7 +128,6 @@ export function CardsView({ creditCards, setCreditCards }: CardsViewProps) {
     setFormLastFour('');
     setFormCurrency('PEN');
     setFormLimit(5000);
-    setFormAvailable(5000);
     setFormClosingDay(20);
     setFormDueDay(10);
     setModalOpen(true);
@@ -89,7 +139,6 @@ export function CardsView({ creditCards, setCreditCards }: CardsViewProps) {
     setFormLastFour(card.lastFourDigits);
     setFormCurrency(card.mainCurrency);
     setFormLimit(card.creditLimit);
-    setFormAvailable(card.availableLimit);
     setFormClosingDay(card.closingDay);
     setFormDueDay(card.dueDay);
     setModalOpen(true);
@@ -102,7 +151,7 @@ export function CardsView({ creditCards, setCreditCards }: CardsViewProps) {
       lastFourDigits: formLastFour,
       mainCurrency: formCurrency === 'PEN' ? 0 : 1,
       creditLimit: Number(formLimit),
-      availableLimit: Number(formAvailable),
+      availableLimit: Number(formLimit), // Por defecto disponible es igual al límite al crear
       closingDay: Number(formClosingDay),
       dueDay: Number(formDueDay),
       familyId: '00000000-0000-0000-0000-000000000000',
@@ -112,7 +161,6 @@ export function CardsView({ creditCards, setCreditCards }: CardsViewProps) {
 
     try {
       if (editCard) {
-        // UPDATE
         const res = await fetch(`${API_BASE}/${editCard.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -121,12 +169,8 @@ export function CardsView({ creditCards, setCreditCards }: CardsViewProps) {
         if (res.ok) {
           const updated = await res.json();
           setCreditCards(creditCards.map(c => c.id === editCard.id ? { ...c, ...normalizeCard(updated) } : c));
-        } else {
-          // fallback update local
-          setCreditCards(creditCards.map(c => c.id === editCard.id ? { ...c, name: formName, lastFourDigits: formLastFour, mainCurrency: formCurrency, creditLimit: Number(formLimit), availableLimit: Number(formAvailable), closingDay: Number(formClosingDay), dueDay: Number(formDueDay) } : c));
         }
       } else {
-        // CREATE
         const res = await fetch(API_BASE, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -135,12 +179,8 @@ export function CardsView({ creditCards, setCreditCards }: CardsViewProps) {
         const created = await res.json();
         setCreditCards([...creditCards, normalizeCard(created)]);
       }
-    } catch {
-      // fallback
-      if (!editCard) {
-        const tempId = crypto.randomUUID();
-        setCreditCards([...creditCards, { id: tempId, name: formName, lastFourDigits: formLastFour, mainCurrency: formCurrency, creditLimit: Number(formLimit), availableLimit: Number(formAvailable), closingDay: Number(formClosingDay), dueDay: Number(formDueDay) }]);
-      }
+    } catch (err) {
+      console.error(err);
     }
 
     setLoading(false);
@@ -168,69 +208,70 @@ export function CardsView({ creditCards, setCreditCards }: CardsViewProps) {
     };
   }
 
-  const totalDebt = creditCards.reduce((sum, c) => {
-    const limit = c.creditLimit ?? 0;
-    const avail = c.availableLimit ?? 0;
-    const used = limit - avail;
-    return sum + (c.mainCurrency === 'USD' ? used * 3.4 : used);
-  }, 0);
+  const formatValue = (val: number, cur: 'PEN' | 'USD') => {
+    return cur === 'PEN'
+      ? `S/ ${val.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
+      : `$ ${val.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+  };
+
+  const formatDashboardCurrency = (val: number) => {
+    return dashboardCurrency === 'PEN'
+      ? `S/ ${val.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
+      : `$ ${val.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+  };
 
   return (
     <Stack gap="lg">
       <Group justify="space-between">
         <div>
           <Title order={2} style={{ color: '#f8fafc' }}>
-            Tarjetas de Crédito & Pasivos
+            Tarjetas de Crédito & Pasivos (Deuda)
           </Title>
           <Text size="sm" c="dimmed">
-            Control de líneas de crédito, consumo acumulado, fechas de corte y límites de pago
+            Las compras registran deudas en las tarjetas y afectan el presupuesto. Los pagos son transferencias y reducen la deuda sin duplicar gastos.
           </Text>
         </div>
         <Button leftSection={<IconPlus size={18} />} color="violet" onClick={openNew}>
-          + Nueva Tarjeta
+          Nueva Tarjeta
         </Button>
       </Group>
 
       {/* Summary Bar */}
-      {creditCards.length > 0 && (
+      {computedCards.length > 0 && (
         <Paper p="md" radius="md" style={{ background: '#1e293b', border: '1px solid #7c3aed' }}>
           <Group justify="space-between">
             <Group gap="xs">
               <ThemeIcon color="violet" variant="light">
                 <IconAlertCircle size={18} />
               </ThemeIcon>
-              <Text fw={700} style={{ color: '#f8fafc' }}>Deuda Total Estimada en Soles</Text>
+              <Text fw={700} style={{ color: '#f8fafc' }}>Deuda Consolidada Total ({dashboardCurrency})</Text>
             </Group>
             <Title order={3} style={{ color: '#a78bfa' }}>
-              S/ {(totalDebt ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+              {formatDashboardCurrency(totalDebtConsolidated)}
             </Title>
           </Group>
         </Paper>
       )}
 
-      {creditCards.length === 0 ? (
+      {computedCards.length === 0 ? (
         <Paper p="xl" radius="md" style={{ background: '#1e293b', border: '2px dashed #334155', textAlign: 'center' }}>
           <IconCreditCard size={48} style={{ color: '#475569' }} />
           <Text mt="md" c="dimmed" size="lg">No tienes tarjetas de crédito registradas</Text>
-          <Text c="dimmed" size="sm" mb="md">Agrega tu primera tarjeta para controlar tus líneas de crédito y deudas</Text>
+          <Text c="dimmed" size="sm" mb="md">Agrega tu primera tarjeta para controlar tus deudas y presupuestos.</Text>
           <Button leftSection={<IconPlus size={16} />} color="violet" onClick={openNew}>Agregar Tarjeta</Button>
         </Paper>
       ) : (
         <Grid>
-          {creditCards.map((card) => {
-            const limit = card.creditLimit ?? 0;
-            const avail = card.availableLimit ?? 0;
-            const used = limit - avail;
-            const usedPct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+          {computedCards.map((card) => {
             const color = getCardColor(card.name);
-            const sym = card.mainCurrency === 'USD' ? '$' : 'S/';
+            const isPen = card.mainCurrency === 'PEN';
 
             return (
               <Grid.Col key={card.id} span={{ base: 12, md: 6, lg: 4 }}>
                 <Card p="md" radius="md" style={{ background: '#1e293b', border: `1px solid #334155`, position: 'relative' }}>
                   {/* Header */}
                   <Group justify="space-between" mb="xs">
-                    <Group>
+                    <Group gap="xs">
                       <ThemeIcon color={color} variant="gradient" gradient={{ from: color, to: 'grape' }} size="lg">
                         <IconCreditCard size={22} />
                       </ThemeIcon>
@@ -240,7 +281,7 @@ export function CardsView({ creditCards, setCreditCards }: CardsViewProps) {
                       </div>
                     </Group>
                     <Group gap="xs">
-                      <Badge color={card.mainCurrency === 'USD' ? 'teal' : 'blue'} variant="light" size="sm">
+                      <Badge color={isPen ? 'blue' : 'teal'} variant="light" size="sm">
                         {card.mainCurrency}
                       </Badge>
                       <ActionIcon variant="light" color="blue" size="sm" onClick={() => openEdit(card)}>
@@ -255,39 +296,63 @@ export function CardsView({ creditCards, setCreditCards }: CardsViewProps) {
                   {/* Usage bar */}
                   <Stack gap="xs" my="sm">
                     <Group justify="space-between">
-                      <Text size="xs" c="dimmed">Consumo utilizado ({usedPct}%)</Text>
-                      <Text size="xs" fw={700} c={usedPct > 80 ? 'red' : usedPct > 50 ? 'orange' : 'teal'}>
-                        {sym} {(used ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                      <Text size="xs" c="dimmed">Uso de Línea ({card.usedPct}%)</Text>
+                      <Text size="xs" fw={700} c={card.usedPct > 80 ? 'red' : card.usedPct > 50 ? 'orange' : 'teal'}>
+                        {formatValue(card.currentDebt, card.mainCurrency)}
                       </Text>
                     </Group>
                     <Progress
-                      value={usedPct}
-                      color={usedPct > 80 ? 'red' : usedPct > 50 ? 'orange' : 'teal'}
+                      value={card.usedPct}
+                      color={card.usedPct > 80 ? 'red' : card.usedPct > 50 ? 'orange' : 'teal'}
                       radius="xl"
                       size="md"
-                      animated={usedPct > 80}
+                      animated={card.usedPct > 80}
                     />
                   </Stack>
 
                   {/* Details */}
+                  <Paper p="xs" radius="sm" style={{ background: '#0f172a' }} mb="xs">
+                    <Group justify="space-between" mb={4}>
+                      <Text size="xs" c="dimmed">Línea de Crédito:</Text>
+                      <Text size="xs" fw={600}>{formatValue(card.creditLimit, card.mainCurrency)}</Text>
+                    </Group>
+                    
+                    <Group justify="space-between" mb={4}>
+                      <Text size="xs" c="dimmed">Deuda Facturada/Pendiente:</Text>
+                      <Text size="xs" fw={700} c={card.currentDebt > 0 ? 'red' : 'dimmed'}>
+                        {formatValue(card.currentDebt, card.mainCurrency)}
+                      </Text>
+                    </Group>
+
+                    {card.saldoAFavor > 0 && (
+                      <Group justify="space-between" mb={4}>
+                        <Text size="xs" c="dimmed">Saldo a Favor:</Text>
+                        <Text size="xs" fw={700} c="green">
+                          + {formatValue(card.saldoAFavor, card.mainCurrency)}
+                        </Text>
+                      </Group>
+                    )}
+
+                    <Group justify="space-between" mb={4}>
+                      <Text size="xs" c="dimmed">Disponible Real:</Text>
+                      <Text size="xs" fw={700} c="teal">
+                        {formatValue(card.availableLimit, card.mainCurrency)}
+                      </Text>
+                    </Group>
+                  </Paper>
+
+                  <Divider my="xs" label="Parámetros de Facturación" labelPosition="center" />
+
                   <Paper p="xs" radius="sm" style={{ background: '#0f172a' }}>
                     <Group justify="space-between" mb={4}>
-                      <Text size="xs" c="dimmed">Línea Total:</Text>
-                      <Text size="xs" fw={600}>{sym} {(card.creditLimit ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</Text>
-                    </Group>
-                    <Group justify="space-between" mb={4}>
-                      <Text size="xs" c="dimmed">Disponible:</Text>
-                      <Text size="xs" fw={600} c="teal">{sym} {(card.availableLimit ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</Text>
-                    </Group>
-                    <Group justify="space-between" mb={4}>
-                      <Text size="xs" c="dimmed">Fecha de Corte:</Text>
+                      <Text size="xs" c="dimmed">Día de Corte:</Text>
                       <Group gap={4}>
                         <IconCalendar size={12} style={{ color: '#94a3b8' }} />
                         <Text size="xs" fw={600}>Día {card.closingDay}</Text>
                       </Group>
                     </Group>
                     <Group justify="space-between">
-                      <Text size="xs" c="dimmed">Fecha de Pago:</Text>
+                      <Text size="xs" c="dimmed">Vence el Día:</Text>
                       <Badge color="red" size="xs" variant="light">Día {card.dueDay}</Badge>
                     </Group>
                   </Paper>
@@ -319,38 +384,27 @@ export function CardsView({ creditCards, setCreditCards }: CardsViewProps) {
             placeholder="ej. 5437"
             maxLength={4}
             value={formLastFour}
-            onChange={(e) => setFormLastFour(e.target.value.replace(/\D/g, ''))}
+            onChange={(e) => setFormLastFour(e.target.value)}
             required
           />
           <Select
             label="Moneda Principal"
-            data={[{ value: 'PEN', label: 'Soles (S/)' }, { value: 'USD', label: 'Dólares ($)' }]}
+            data={['PEN', 'USD']}
             value={formCurrency}
-            onChange={(v) => setFormCurrency((v as 'PEN' | 'USD') || 'PEN')}
+            onChange={(v) => setFormCurrency(v as 'PEN' | 'USD')}
             required
           />
           <NumberInput
-            label="Línea de Crédito Total"
+            label="Línea de Crédito"
             placeholder="0.00"
             value={formLimit}
             onChange={setFormLimit}
             min={0}
-            decimalScale={2}
-            required
-          />
-          <NumberInput
-            label="Disponible Actual"
-            placeholder="0.00"
-            value={formAvailable}
-            onChange={setFormAvailable}
-            min={0}
-            decimalScale={2}
             required
           />
           <Group grow>
             <NumberInput
               label="Día de Corte"
-              placeholder="20"
               value={formClosingDay}
               onChange={setFormClosingDay}
               min={1}
@@ -358,8 +412,7 @@ export function CardsView({ creditCards, setCreditCards }: CardsViewProps) {
               required
             />
             <NumberInput
-              label="Día de Pago"
-              placeholder="10"
+              label="Día de Pago (Vencimiento)"
               value={formDueDay}
               onChange={setFormDueDay}
               min={1}
@@ -367,39 +420,27 @@ export function CardsView({ creditCards, setCreditCards }: CardsViewProps) {
               required
             />
           </Group>
-          <Button
-            color="violet"
-            fullWidth
-            loading={loading}
-            leftSection={<IconCreditCard size={18} />}
-            onClick={handleSave}
-            disabled={!formName || !formLastFour}
-          >
-            {editCard ? 'Actualizar Tarjeta' : 'Crear Tarjeta'}
+          <Button color="violet" onClick={handleSave} loading={loading}>
+            {editCard ? 'Guardar Cambios' : 'Crear Tarjeta'}
           </Button>
         </Stack>
       </Modal>
 
-      {/* DELETE CONFIRM MODAL */}
+      {/* DELETE CONFIRMATION MODAL */}
       <Modal
-        opened={!!deleteId}
+        opened={deleteId !== null}
         onClose={() => setDeleteId(null)}
-        title="Eliminar Tarjeta de Crédito"
+        title="Confirmar eliminación"
         centered
         size="sm"
-        radius="md"
       >
-        <Stack gap="md">
-          <Text size="sm" c="dimmed">
-            ¿Estás seguro de que deseas eliminar esta tarjeta? Esta acción no se puede deshacer.
-          </Text>
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setDeleteId(null)}>Cancelar</Button>
-            <Button color="red" leftSection={<IconTrash size={16} />} onClick={() => deleteId && handleDelete(deleteId)}>
-              Eliminar
-            </Button>
-          </Group>
-        </Stack>
+        <Text size="sm" mb="md">
+          ¿Estás seguro de que deseas eliminar esta tarjeta de crédito? Esta acción no se puede deshacer.
+        </Text>
+        <Group justify="flex-end">
+          <Button variant="default" onClick={() => setDeleteId(null)}>Cancelar</Button>
+          <Button color="red" onClick={() => deleteId && handleDelete(deleteId)}>Eliminar</Button>
+        </Group>
       </Modal>
     </Stack>
   );

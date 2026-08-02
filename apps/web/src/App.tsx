@@ -699,7 +699,14 @@ export function App() {
             ) : activeTab === 'Cuentas Bancarias' ? (
               <AccountsView accounts={accounts} setAccounts={setAccounts} onTransfer={() => setModalType('transfer')} onExchange={() => setModalType('exchange')} />
             ) : activeTab === 'Tarjetas de Crédito' ? (
-              <CardsView creditCards={creditCards} setCreditCards={setCreditCards} />
+              <CardsView
+                creditCards={creditCards}
+                setCreditCards={setCreditCards}
+                transactions={transactions}
+                getRawAmount={getRawAmount}
+                dashboardCurrency={dashboardCurrency}
+                convertAmount={convertAmount}
+              />
             ) : activeTab === 'Inversiones & Plazos' ? (
               <InvestmentsView deposits={deposits} setDeposits={setDeposits} />
             ) : activeTab === 'Transferencias' ? (
