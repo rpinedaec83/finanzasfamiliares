@@ -19,19 +19,42 @@ import { OnboardingView } from './components/OnboardingView';
 // Interceptar fetch para inyectar token JWT automáticamente en todas las peticiones
 const originalFetch = window.fetch;
 window.fetch = async (input, init) => {
-  const token = localStorage.getItem('kipu_token');
+  const rawToken = localStorage.getItem('kipu_token');
+  const token = rawToken && rawToken !== 'undefined' && rawToken !== 'null' ? rawToken.trim() : null;
+  
+  const newInit = { ...init };
   if (token) {
-    init = init || {};
-    init.headers = init.headers || {};
-    if (init.headers instanceof Headers) {
-      init.headers.set('Authorization', `Bearer ${token}`);
-    } else if (Array.isArray(init.headers)) {
-      init.headers.push(['Authorization', `Bearer ${token}`]);
+    let headers: HeadersInit = {};
+    if (newInit.headers) {
+      if (newInit.headers instanceof Headers) {
+        headers = new Headers(newInit.headers);
+        headers.set('Authorization', `Bearer ${token}`);
+      } else if (Array.isArray(newInit.headers)) {
+        headers = [...newInit.headers, ['Authorization', `Bearer ${token}`]];
+      } else {
+        headers = { ...newInit.headers, 'Authorization': `Bearer ${token}` };
+      }
     } else {
-      (init.headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+      headers = { 'Authorization': `Bearer ${token}` };
+    }
+    newInit.headers = headers;
+  }
+  
+  const response = await originalFetch(input, newInit);
+  
+  if (response.status === 401) {
+    const url = typeof input === 'string' ? input : (input instanceof URL ? input.toString() : (input as Request).url);
+    const isAuthEndpoint = url.includes('/api/auth/login') || url.includes('/api/auth/register');
+    
+    if (!isAuthEndpoint) {
+      localStorage.removeItem('kipu_token');
+      localStorage.removeItem('kipu_user');
+      localStorage.removeItem('kipu_family');
+      window.location.href = '/';
     }
   }
-  return originalFetch(input, init);
+  
+  return response;
 };
 import {
   MantineProvider,
@@ -83,7 +106,10 @@ import {
 } from '@tabler/icons-react';
 
 export function App() {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('kipu_token'));
+  const [token, setToken] = useState<string | null>(() => {
+    const saved = localStorage.getItem('kipu_token');
+    return saved && saved !== 'undefined' && saved !== 'null' ? saved.trim() : null;
+  });
   const [user, setUser] = useState<any>(() => {
     const saved = localStorage.getItem('kipu_user');
     return saved ? JSON.parse(saved) : null;
