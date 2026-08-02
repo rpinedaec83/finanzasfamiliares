@@ -9,7 +9,7 @@ import {
   IconTrendingUp, IconCoin, IconCheck,
 } from '@tabler/icons-react';
 
-interface FixedDeposit {
+export interface FixedDeposit {
   id: string;
   bank: string;
   name: string;
@@ -21,9 +21,32 @@ interface FixedDeposit {
   status: 'activo' | 'vencido' | 'cancelado';
 }
 
-interface InvestmentsViewProps {
-  deposits: FixedDeposit[];
-  setDeposits: (d: FixedDeposit[]) => void;
+export function normalizeDeposit(d: any): FixedDeposit {
+  return {
+    id: d.id,
+    bank: d.bankName || d.BankName || 'BCP',
+    name: d.accountHolder || d.AccountHolder || 'Depósito a Plazo Fijo',
+    currency: (d.currency === 0 || d.currency === 'PEN') ? 'PEN' : 'USD',
+    principal: d.initialPrincipal ?? d.InitialPrincipal ?? 0,
+    teaPercent: d.annualRate ?? d.AnnualRate ?? 0,
+    startDate: (d.openingDate || d.OpeningDate || new Date().toISOString()).slice(0, 10),
+    endDate: (d.maturityDate || d.MaturityDate || new Date().toISOString()).slice(0, 10),
+    status: (d.status === 'Active') ? 'activo' : (d.status === 'Matured') ? 'vencido' : 'cancelado'
+  };
+}
+
+export function denormalizeDeposit(d: FixedDeposit) {
+  return {
+    id: d.id,
+    bankName: d.bank,
+    accountHolder: d.name,
+    currency: d.currency === 'PEN' ? 0 : 1,
+    initialPrincipal: d.principal,
+    annualRate: d.teaPercent,
+    openingDate: new Date(d.startDate).toISOString(),
+    maturityDate: new Date(d.endDate).toISOString(),
+    status: d.status === 'activo' ? 'Active' : d.status === 'vencido' ? 'Matured' : 'Settled'
+  };
 }
 
 const BANKS = ['BBVA', 'BCP', 'Interbank', 'Banco Falabella', 'Scotiabank', 'CMAC Arequipa', 'BanBif', 'Pichincha'];
@@ -47,6 +70,11 @@ function calcInterest(principal: number, teaPercent: number, startDate: string, 
 function calcElapsedInterest(principal: number, teaPercent: number, startDate: string): number {
   const days = Math.max(0, (Date.now() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24));
   return principal * (Math.pow(1 + teaPercent / 100, days / 365) - 1);
+}
+
+interface InvestmentsViewProps {
+  deposits: FixedDeposit[];
+  setDeposits: (d: FixedDeposit[]) => void;
 }
 
 export function InvestmentsView({ deposits, setDeposits }: InvestmentsViewProps) {
@@ -100,7 +128,7 @@ export function InvestmentsView({ deposits, setDeposits }: InvestmentsViewProps)
     setModalOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const item: FixedDeposit = {
       id: editDeposit?.id || crypto.randomUUID(),
       bank: formBank,
@@ -112,17 +140,49 @@ export function InvestmentsView({ deposits, setDeposits }: InvestmentsViewProps)
       endDate: formEnd,
       status: formStatus,
     };
-    if (editDeposit) {
-      setDeposits(deposits.map(d => d.id === editDeposit.id ? item : d));
-    } else {
-      setDeposits([...deposits, item]);
+
+    try {
+      const url = editDeposit ? `/api/deposits/${item.id}` : '/api/deposits';
+      const method = editDeposit ? 'PUT' : 'POST';
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(denormalizeDeposit(item)),
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al guardar depósito a plazo');
+      }
+
+      if (method === 'POST') {
+        const savedData = await response.json();
+        const normalizedSaved = normalizeDeposit(savedData);
+        setDeposits([...deposits, normalizedSaved]);
+      } else {
+        // En PUT, podemos mapear directamente el item local si la respuesta es exitosa o procesar la respuesta
+        const savedData = await response.json();
+        const normalizedSaved = normalizeDeposit(savedData);
+        setDeposits(deposits.map(d => d.id === editDeposit!.id ? normalizedSaved : d));
+      }
+      setModalOpen(false);
+    } catch (err) {
+      console.error(err);
     }
-    setModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    setDeposits(deposits.filter(d => d.id !== id));
-    setDeleteId(null);
+  const handleDelete = async (id: string) => {
+    try {
+      const response = await fetch(`/api/deposits/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Error al eliminar depósito a plazo');
+      }
+      setDeposits(deposits.filter(d => d.id !== id));
+      setDeleteId(null);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (

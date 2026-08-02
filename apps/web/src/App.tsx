@@ -12,7 +12,7 @@ import { ExchangesView } from './components/ExchangesView';
 import { BudgetsView } from './components/BudgetsView';
 import { GoalsView } from './components/GoalsView';
 import { CatalogsView } from './components/CatalogsView';
-import { InvestmentsView } from './components/InvestmentsView';
+import { InvestmentsView, normalizeDeposit } from './components/InvestmentsView';
 import { LoginView } from './components/LoginView';
 import { OnboardingView } from './components/OnboardingView';
 
@@ -174,7 +174,7 @@ export function App() {
       setTransactions(txsData || []);
       setBudgets(budgetsData || []);
       setGoals(goalsData || []);
-      setDeposits(depositsData || []);
+      setDeposits((depositsData || []).map(normalizeDeposit));
       setLoadingData(false);
     }).catch(() => {
       setLoadingData(false);

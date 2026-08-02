@@ -40,6 +40,36 @@ public class DepositsController : ControllerBase
         return CreatedAtAction(nameof(GetDeposits), new { id = deposit.Id }, deposit);
     }
 
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateDeposit(Guid id, [FromBody] FixedTermDeposit updated)
+    {
+        var deposit = await _context.FixedTermDeposits.FirstOrDefaultAsync(d => d.Id == id);
+        if (deposit == null) return NotFound();
+
+        deposit.BankName = updated.BankName;
+        deposit.AccountHolder = updated.AccountHolder;
+        deposit.InitialPrincipal = updated.InitialPrincipal;
+        deposit.Currency = updated.Currency;
+        deposit.AnnualRate = updated.AnnualRate;
+        deposit.OpeningDate = DateTime.SpecifyKind(updated.OpeningDate, DateTimeKind.Utc);
+        deposit.MaturityDate = DateTime.SpecifyKind(updated.MaturityDate, DateTimeKind.Utc);
+        deposit.Status = updated.Status;
+
+        await _context.SaveChangesAsync();
+        return Ok(deposit);
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteDeposit(Guid id)
+    {
+        var deposit = await _context.FixedTermDeposits.FirstOrDefaultAsync(d => d.Id == id);
+        if (deposit == null) return NotFound();
+
+        _context.FixedTermDeposits.Remove(deposit);
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
     public record SettleDepositRequest(decimal ReceivedInterestManual);
 
     [HttpPost("{id}/settle")]
