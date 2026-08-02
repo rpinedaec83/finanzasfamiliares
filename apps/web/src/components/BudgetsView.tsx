@@ -16,8 +16,9 @@ import {
   ActionIcon,
   Divider,
   Center,
+  SegmentedControl,
 } from '@mantine/core';
-import { IconPlus, IconEdit, IconTrash, IconReceipt2, IconAlertTriangle } from '@tabler/icons-react';
+import { IconPlus, IconEdit, IconTrash, IconReceipt2, IconAlertTriangle, IconCalendar } from '@tabler/icons-react';
 
 interface BudgetsViewProps {
   budgets: any[];
@@ -67,16 +68,32 @@ export function BudgetsView({
   const [modalOpen, setModalOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<any | null>(null);
 
+  // Filtros de visualización
+  const [selectedMonth, setSelectedMonth] = useState<string>('8'); // Agosto por defecto para 2026
+  const [selectedYear, setSelectedYear] = useState<number>(2026);
+
   // Form states
   const [formCategory, setFormCategory] = useState<string | null>('Supermercado');
   const [formLimit, setFormLimit] = useState<number | string>(1000);
   const [formMonth, setFormMonth] = useState<string>('8');
   const [formYear, setFormYear] = useState<number | string>(2026);
+  const [formIsAnnual, setFormIsAnnual] = useState<boolean>(false);
 
-  // Calcular la ejecución dinámica de transacciones de egreso para cada categoría en el mes y año asignado
+  // Calcular presupuestos aplicables y ejecutados para el mes/año seleccionados
   const computedBudgets = useMemo(() => {
-    return budgets.map((b) => {
-      // Filtrar egresos de la categoría para el mes/año del presupuesto
+    // Filtrar presupuestos aplicables:
+    // - Único del mes y coincide en mes y año
+    // - O es anual y coincide en año
+    const applicableBudgets = budgets.filter((b) => {
+      const isAnnual = b.isAnnual || b.isAnnual === 'true';
+      if (isAnnual) {
+        return b.year === selectedYear;
+      }
+      return b.month === Number(selectedMonth) && b.year === selectedYear;
+    });
+
+    return applicableBudgets.map((b) => {
+      // Filtrar egresos de la categoría para el mes y año SELECCIONADOS
       const executed = transactions
         .filter((t) => {
           const rawAmount = getRawAmount(t);
@@ -104,7 +121,7 @@ export function BudgetsView({
             }
           }
 
-          return txMonth === b.month && txYear === b.year;
+          return txMonth === Number(selectedMonth) && txYear === selectedYear;
         })
         .reduce((sum, t) => sum + convertAmount(Math.abs(getRawAmount(t)), getCurrency(t), t.date), 0);
 
@@ -118,14 +135,15 @@ export function BudgetsView({
         pct,
       };
     });
-  }, [budgets, transactions, dashboardCurrency, convertAmount, getRawAmount, getCurrency]);
+  }, [budgets, transactions, selectedMonth, selectedYear, dashboardCurrency, convertAmount, getRawAmount, getCurrency]);
 
   const openNew = () => {
     setEditingBudget(null);
     setFormCategory('Supermercado');
     setFormLimit(1000);
-    setFormMonth('8');
-    setFormYear(2026);
+    setFormMonth(selectedMonth);
+    setFormYear(selectedYear);
+    setFormIsAnnual(false);
     setModalOpen(true);
   };
 
@@ -135,6 +153,7 @@ export function BudgetsView({
     setFormLimit(b.limitAmount);
     setFormMonth(String(b.month));
     setFormYear(b.year);
+    setFormIsAnnual(b.isAnnual || b.isAnnual === 'true');
     setModalOpen(true);
   };
 
@@ -147,6 +166,7 @@ export function BudgetsView({
       executedAmount: 0,
       month: Number(formMonth),
       year: Number(formYear),
+      isAnnual: formIsAnnual,
     };
 
     try {
@@ -212,17 +232,44 @@ export function BudgetsView({
         </Button>
       </Group>
 
+      {/* Selectores de visualización por mes y año */}
+      <Paper p="md" radius="md" style={{ background: '#1e293b', border: '1px solid #334155' }}>
+        <Group align="flex-end" gap="md">
+          <Select
+            label="Ver Presupuestos de"
+            placeholder="Mes"
+            data={MONTHS}
+            value={selectedMonth}
+            onChange={(val) => setSelectedMonth(val || '8')}
+            leftSection={<IconCalendar size={16} />}
+            style={{ width: 180 }}
+          />
+          <NumberInput
+            label="Año"
+            placeholder="Año"
+            value={selectedYear}
+            onChange={(val) => setSelectedYear(Number(val) || 2026)}
+            min={2020}
+            max={2100}
+            style={{ width: 120 }}
+          />
+        </Group>
+      </Paper>
+
       {computedBudgets.length === 0 ? (
         <Card p="xl" radius="md" style={{ background: '#1e293b', border: '1px solid #334155', minHeight: 220 }}>
           <Center style={{ height: '100%' }}>
             <Stack align="center" gap="xs">
               <IconReceipt2 size={48} color="#94a3b8" stroke={1.5} />
-              <Text fw={700} style={{ color: '#f8fafc' }} size="lg">No hay presupuestos configurados</Text>
+              <Text fw={700} style={{ color: '#f8fafc' }} size="lg">
+                No hay presupuestos para este mes
+              </Text>
               <Text size="sm" c="dimmed" style={{ maxWidth: 400, textAlign: 'center' }}>
-                Crea límites de gastos mensuales para controlar tus finanzas de acuerdo a tus categorías favoritas.
+                No tienes presupuestos configurados para {MONTHS.find(m => m.value === selectedMonth)?.label} {selectedYear}. 
+                Asigna uno de tipo mensual o crea uno anual.
               </Text>
               <Button size="xs" color="teal" onClick={openNew} mt="xs">
-                Asignar Primer Presupuesto
+                Asignar Presupuesto
               </Button>
             </Stack>
           </Center>
@@ -232,14 +279,22 @@ export function BudgetsView({
           {computedBudgets.map((b) => {
             const isOverBudget = b.pct > 100;
             const progressColor = b.pct >= 100 ? 'red' : b.pct >= 85 ? 'orange' : 'teal';
+            const isAnnual = b.isAnnual || b.isAnnual === 'true';
 
             return (
               <Grid.Col key={b.id} span={{ base: 12, md: 6 }}>
                 <Card p="md" radius="md" style={{ background: '#1e293b', border: '1px solid #334155', position: 'relative' }}>
                   <Group justify="space-between" mb="xs">
                     <div>
-                      <Text fw={700} style={{ color: '#f8fafc' }}>{b.categoryName}</Text>
-                      <Text size="xs" c="dimmed">{MONTHS.find(m => m.value === String(b.month))?.label} {b.year}</Text>
+                      <Group gap="xs">
+                        <Text fw={700} style={{ color: '#f8fafc' }}>{b.categoryName}</Text>
+                        <Badge color={isAnnual ? 'blue' : 'gray'} variant="filled" size="xs">
+                          {isAnnual ? 'Anual' : 'Mensual'}
+                        </Badge>
+                      </Group>
+                      <Text size="xs" c="dimmed">
+                        Vigencia: {isAnnual ? `Todo ${selectedYear}` : `${MONTHS.find(m => m.value === String(b.month))?.label} ${b.year}`}
+                      </Text>
                     </div>
                     <Group gap="xs">
                       <Badge color={progressColor} variant="light">
@@ -258,11 +313,11 @@ export function BudgetsView({
 
                   <Paper p="xs" radius="sm" style={{ background: '#0f172a' }}>
                     <Group justify="space-between" mb={4}>
-                      <Text size="xs" c="dimmed">Gastado Hasta Hoy:</Text>
+                      <Text size="xs" c="dimmed">Gastado en {MONTHS.find(m => m.value === selectedMonth)?.label}:</Text>
                       <Text size="xs" fw={700} color={progressColor}>{formatAmount(b.executed)}</Text>
                     </Group>
                     <Group justify="space-between">
-                      <Text size="xs" c="dimmed">Límite Asignado:</Text>
+                      <Text size="xs" c="dimmed">Límite Mensual:</Text>
                       <Text size="xs" fw={600}>{formatAmount(b.limit)}</Text>
                     </Group>
                   </Paper>
@@ -285,8 +340,27 @@ export function BudgetsView({
           <Select label="Categoría" data={CATEGORIES} value={formCategory} onChange={setFormCategory} required />
           <NumberInput label="Límite Mensual" placeholder="0.00" value={formLimit} onChange={setFormLimit} min={1} required />
           
+          <Divider label="Tipo de Recurrencia" labelPosition="center" />
+          
+          <SegmentedControl
+            value={formIsAnnual ? 'anual' : 'mensual'}
+            onChange={(val) => setFormIsAnnual(val === 'anual')}
+            data={[
+              { label: 'Único por el mes', value: 'mensual' },
+              { label: 'Anual (se repite todos los meses)', value: 'anual' },
+            ]}
+          />
+
+          <Divider label="Vigencia Temporal" labelPosition="center" />
+
           <Group grow>
-            <Select label="Mes" data={MONTHS} value={formMonth} onChange={(val) => setFormMonth(val || '8')} required />
+            <Select 
+              label="Mes Inicial" 
+              data={MONTHS} 
+              value={formMonth} 
+              onChange={(val) => setFormMonth(val || '8')} 
+              disabled={formIsAnnual} 
+            />
             <NumberInput label="Año" placeholder="2026" value={formYear} onChange={setFormYear} min={2020} max={2100} required />
           </Group>
 

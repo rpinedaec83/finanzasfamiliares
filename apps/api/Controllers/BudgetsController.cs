@@ -49,6 +49,7 @@ public class BudgetsController : ControllerBase
         budget.LimitAmount = updated.LimitAmount;
         budget.Month = updated.Month;
         budget.Year = updated.Year;
+        budget.IsAnnual = updated.IsAnnual;
 
         await _context.SaveChangesAsync();
         return Ok(budget);

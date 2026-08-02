@@ -160,6 +160,11 @@ try
         );
     ");
     
+    // Asegurar la columna IsAnnual en la tabla Budgets
+    await db.Database.ExecuteSqlRawAsync(@"
+        ALTER TABLE ""Budgets"" ADD COLUMN IF NOT EXISTS ""IsAnnual"" BOOLEAN NOT NULL DEFAULT FALSE;
+    ");
+    
     app.Logger.LogInformation("[DB] PostgreSQL conectado y esquema sincronizado.");
 }
 catch (Exception ex)

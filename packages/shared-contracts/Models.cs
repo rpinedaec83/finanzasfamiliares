@@ -194,6 +194,7 @@ public class Budget
     public decimal ExecutedAmount { get; set; }
     public int Month { get; set; }
     public int Year { get; set; }
+    public bool IsAnnual { get; set; } = false;
 }
 
 public class SavingsGoal
