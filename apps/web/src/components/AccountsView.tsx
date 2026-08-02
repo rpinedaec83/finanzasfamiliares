@@ -17,14 +17,32 @@ import {
 } from '@mantine/core';
 import { IconBuildingBank, IconArrowsExchange, IconPlus, IconEdit, IconTrash } from '@tabler/icons-react';
 
-interface AccountItem {
-  id: number;
+export interface AccountItem {
+  id: any;
   bank: string;
   name: string;
   cci: string;
   rawBalance: number;
   currency: 'PEN' | 'USD';
   color: string;
+}
+
+export function normalizeAccount(raw: any): AccountItem {
+  let bankColor = 'blue';
+  const bank = raw.bankName || raw.BankName || 'Efectivo';
+  if (bank === 'BBVA') bankColor = 'teal';
+  if (bank === 'Banco Falabella' || bank === 'Interbank' || bank === 'Falabella') bankColor = 'green';
+  if (bank === 'Efectivo') bankColor = 'orange';
+
+  return {
+    id: raw.id || raw.Id,
+    bank: bank,
+    name: raw.name || raw.Name || '',
+    cci: raw.cciNumber || raw.CciNumber || 'N/A',
+    rawBalance: raw.balanceAvailable !== undefined ? raw.balanceAvailable : (raw.BalanceAvailable !== undefined ? raw.BalanceAvailable : 0),
+    currency: raw.currency === 0 || raw.currency === 'PEN' || raw.Currency === 0 || raw.Currency === 'PEN' ? 'PEN' : 'USD',
+    color: bankColor
+  };
 }
 
 interface AccountsViewProps {
@@ -38,7 +56,7 @@ export function AccountsView({ accounts, setAccounts, onTransfer, onExchange }: 
 
   // Modal State
   const [modalOpened, setModalOpened] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<any>(null);
 
   // Form Fields
   const [bank, setBank] = useState<string>('BCP');
@@ -67,41 +85,74 @@ export function AccountsView({ accounts, setAccounts, onTransfer, onExchange }: 
     setModalOpened(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) return;
 
-    let bankColor = 'blue';
-    if (bank === 'BBVA') bankColor = 'teal';
-    if (bank === 'Banco Falabella') bankColor = 'green';
-    if (bank === 'Interbank') bankColor = 'green';
-    if (bank === 'Efectivo') bankColor = 'orange';
+    const body = {
+      bankName: bank,
+      name,
+      cciNumber: cci || 'N/A',
+      balanceAvailable: Number(balance),
+      balanceBook: Number(balance),
+      currency: currency === 'PEN' ? 0 : 1,
+      type: bank === 'Efectivo' ? 5 : 1, // 5 = CashPEN, 1 = Savings
+      lastFourDigits: cci.trim().slice(-4) || '0000',
+      isIncludedInNetWorth: true
+    };
 
-    if (editingId !== null) {
-      setAccounts(
-        accounts.map((a) =>
-          a.id === editingId
-            ? { ...a, bank, name, cci: cci || 'N/A', rawBalance: balance, currency, color: bankColor }
-            : a
-        )
-      );
-    } else {
-      const newAcc: AccountItem = {
-        id: Date.now(),
-        bank,
-        name,
-        cci: cci || 'N/A',
-        rawBalance: balance,
-        currency,
-        color: bankColor,
-      };
-      setAccounts([...accounts, newAcc]);
+    try {
+      if (editingId !== null) {
+        // UPDATE
+        const res = await fetch(`/api/accounts/${editingId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...body, id: editingId }),
+        });
+        if (res.ok) {
+          const updated = await res.json();
+          setAccounts(accounts.map(a => a.id === editingId ? normalizeAccount(updated) : a));
+        } else {
+          // fallback
+          let bankColor = 'blue';
+          if (bank === 'BBVA') bankColor = 'teal';
+          if (bank === 'Banco Falabella' || bank === 'Interbank' || bank === 'Falabella') bankColor = 'green';
+          if (bank === 'Efectivo') bankColor = 'orange';
+          setAccounts(accounts.map(a => a.id === editingId ? { ...a, bank, name, cci: cci || 'N/A', rawBalance: Number(balance), currency, color: bankColor } : a));
+        }
+      } else {
+        // CREATE
+        const res = await fetch('/api/accounts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) {
+          const created = await res.json();
+          setAccounts([...accounts, normalizeAccount(created)]);
+        }
+      }
+    } catch (e) {
+      console.error("Error saving account:", e);
+      // fallback
+      if (editingId === null) {
+        let bankColor = 'blue';
+        if (bank === 'BBVA') bankColor = 'teal';
+        if (bank === 'Banco Falabella' || bank === 'Interbank' || bank === 'Falabella') bankColor = 'green';
+        if (bank === 'Efectivo') bankColor = 'orange';
+        setAccounts([...accounts, { id: crypto.randomUUID() as any, bank, name, cci: cci || 'N/A', rawBalance: Number(balance), currency, color: bankColor }]);
+      }
     }
 
     setModalOpened(false);
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: any) => {
     if (confirm('¿Estás seguro de eliminar esta cuenta bancaria?')) {
+      try {
+        await fetch(`/api/accounts/${id}`, { method: 'DELETE' });
+      } catch (e) {
+        console.error("Error deleting account:", e);
+      }
       setAccounts(accounts.filter((a) => a.id !== id));
     }
   };

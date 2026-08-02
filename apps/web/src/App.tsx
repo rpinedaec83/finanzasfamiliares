@@ -5,7 +5,7 @@ import { IntegrationsView } from './components/IntegrationsView';
 import { AiAssistantView } from './components/AiAssistantView';
 import { AuditView } from './components/AuditView';
 import { TransactionsView } from './components/TransactionsView';
-import { AccountsView } from './components/AccountsView';
+import { AccountsView, normalizeAccount } from './components/AccountsView';
 import { CardsView } from './components/CardsView';
 import { TransfersView } from './components/TransfersView';
 import { ExchangesView } from './components/ExchangesView';
@@ -168,7 +168,7 @@ export function App() {
       fetch('/api/budgets').then(r => r.json()).catch(() => []),
       fetch('/api/goals').then(r => r.json()).catch(() => []),
     ]).then(([accountsData, cardsData, txsData, budgetsData, goalsData]) => {
-      setAccounts(accountsData || []);
+      setAccounts((accountsData || []).map(normalizeAccount));
       setCreditCards(cardsData || []);
       setTransactions(txsData || []);
       setBudgets(budgetsData || []);
