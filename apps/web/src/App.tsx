@@ -46,7 +46,7 @@ window.fetch = async (input, init) => {
     const url = typeof input === 'string' ? input : (input instanceof URL ? input.toString() : (input as Request).url);
     const isAuthEndpoint = url.includes('/api/auth/login') || url.includes('/api/auth/register');
     
-    if (!isAuthEndpoint) {
+    if (!isAuthEndpoint && token) {
       localStorage.removeItem('kipu_token');
       localStorage.removeItem('kipu_user');
       localStorage.removeItem('kipu_family');
