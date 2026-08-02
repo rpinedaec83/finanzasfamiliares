@@ -169,7 +169,9 @@ export function CardsView({ creditCards, setCreditCards }: CardsViewProps) {
   }
 
   const totalDebt = creditCards.reduce((sum, c) => {
-    const used = c.creditLimit - c.availableLimit;
+    const limit = c.creditLimit ?? 0;
+    const avail = c.availableLimit ?? 0;
+    const used = limit - avail;
     return sum + (c.mainCurrency === 'USD' ? used * 3.4 : used);
   }, 0);
 
@@ -216,8 +218,10 @@ export function CardsView({ creditCards, setCreditCards }: CardsViewProps) {
       ) : (
         <Grid>
           {creditCards.map((card) => {
-            const used = card.creditLimit - card.availableLimit;
-            const usedPct = card.creditLimit > 0 ? Math.min(100, Math.round((used / card.creditLimit) * 100)) : 0;
+            const limit = card.creditLimit ?? 0;
+            const avail = card.availableLimit ?? 0;
+            const used = limit - avail;
+            const usedPct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
             const color = getCardColor(card.name);
             const sym = card.mainCurrency === 'USD' ? '$' : 'S/';
 
@@ -269,11 +273,11 @@ export function CardsView({ creditCards, setCreditCards }: CardsViewProps) {
                   <Paper p="xs" radius="sm" style={{ background: '#0f172a' }}>
                     <Group justify="space-between" mb={4}>
                       <Text size="xs" c="dimmed">Línea Total:</Text>
-                      <Text size="xs" fw={600}>{sym} {card.creditLimit.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</Text>
+                      <Text size="xs" fw={600}>{sym} {(card.creditLimit ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</Text>
                     </Group>
                     <Group justify="space-between" mb={4}>
                       <Text size="xs" c="dimmed">Disponible:</Text>
-                      <Text size="xs" fw={600} c="teal">{sym} {card.availableLimit.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</Text>
+                      <Text size="xs" fw={600} c="teal">{sym} {(card.availableLimit ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</Text>
                     </Group>
                     <Group justify="space-between" mb={4}>
                       <Text size="xs" c="dimmed">Fecha de Corte:</Text>

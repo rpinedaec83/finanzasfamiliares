@@ -133,8 +133,8 @@ export function AccountsView({ accounts, setAccounts, onTransfer, onExchange }: 
       <Grid>
         {accounts.map((acc) => {
           const formattedVal = acc.currency === 'PEN'
-            ? `S/ ${acc.rawBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
-            : `$ ${acc.rawBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+            ? `S/ ${(acc.rawBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+            : `$ ${(acc.rawBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
           return (
             <Grid.Col key={acc.id} span={{ base: 12, md: 6 }}>
