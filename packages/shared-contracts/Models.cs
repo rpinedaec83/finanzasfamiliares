@@ -140,6 +140,7 @@ public class Transaction
     public Guid FamilyId { get; set; }
     public Guid AccountId { get; set; }
     public Guid? CreditCardId { get; set; }
+    public Guid? SavingsGoalId { get; set; }
     public DateTime OperationDate { get; set; }
     public string DescriptionOriginal { get; set; } = string.Empty;
     public string DescriptionNormalized { get; set; } = string.Empty;

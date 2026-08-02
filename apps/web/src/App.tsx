@@ -229,6 +229,11 @@ export function App() {
 
   const accountNames = accounts.map((a: any) => a.name);
 
+  // Estados para asociar metas de ahorro
+  const [expenseSavingsGoalId, setExpenseSavingsGoalId] = useState<string | null>(null);
+  const [transferSavingsGoalId, setTransferSavingsGoalId] = useState<string | null>(null);
+  const [editTxSavingsGoalId, setEditTxSavingsGoalId] = useState<string | null>(null);
+
   const [editTxId, setEditTxId] = useState<number | null>(null);
   const [editTxType, setEditTxType] = useState<string>('Gasto');
   const [editTxCat, setEditTxCat] = useState<string>('Otros');
@@ -238,6 +243,7 @@ export function App() {
   const openEditTx = (tx: any) => {
     setEditTxId(tx.id);
     setEditTxType(tx.type?.toUpperCase() || 'GASTO');
+    setEditTxSavingsGoalId(tx.savingsGoalId || tx.SavingsGoalId || null);
     setEditTxCat(tx.cat || 'Varios / Otros');
     if (tx.account?.includes(' ➔ ')) {
        const [orig, dest] = tx.account.split(' ➔ ');
@@ -259,7 +265,9 @@ export function App() {
            type: editTxType, 
            cat: isTransfer ? 'Transferencia' : editTxCat,
            account: isTransfer ? `${editTxOrigin} ➔ ${editTxDest}` : t.account,
-           color: editTxType.includes('GASTO') ? 'red' : editTxType.includes('INGRESO') ? 'green' : editTxType.includes('TRANSFERENCIA') ? 'gray' : 'blue'
+           color: editTxType.includes('GASTO') ? 'red' : editTxType.includes('INGRESO') ? 'green' : editTxType.includes('TRANSFERENCIA') ? 'gray' : 'blue',
+           savingsGoalId: editTxSavingsGoalId,
+           SavingsGoalId: editTxSavingsGoalId
         };
       }
       return t;
@@ -296,10 +304,13 @@ export function App() {
       type: 'Gasto',
       amount: `- S/ ${Number(expenseAmount).toFixed(2)}`,
       color: 'red',
+      savingsGoalId: expenseSavingsGoalId,
+      SavingsGoalId: expenseSavingsGoalId
     };
     setTransactions([newTx, ...transactions]);
     setExpenseDesc('');
     setExpenseAmount(0);
+    setExpenseSavingsGoalId(null);
     setModalType(null);
   };
 
@@ -314,10 +325,13 @@ export function App() {
       type: 'Transferencia',
       amount: `S/ ${Number(transferAmount).toFixed(2)}`,
       color: 'gray',
+      savingsGoalId: transferSavingsGoalId,
+      SavingsGoalId: transferSavingsGoalId
     };
     setTransactions([newTx, ...transactions]);
     setTransferAmount(0);
     setTransferFee(0);
+    setTransferSavingsGoalId(null);
     setModalType(null);
   };
 
@@ -612,7 +626,15 @@ export function App() {
                 getCurrency={getCurrency}
               />
             ) : activeTab === 'Metas de Ahorro' ? (
-              <GoalsView />
+              <GoalsView
+                goals={goals}
+                setGoals={setGoals}
+                transactions={transactions}
+                dashboardCurrency={dashboardCurrency}
+                convertAmount={convertAmount}
+                getRawAmount={getRawAmount}
+                getCurrency={getCurrency}
+              />
             ) : activeTab === 'Importación & OCR' ? (
               <ImportView accounts={accounts} onImportItems={handleImportItems} />
             ) : activeTab === 'Catálogos & Maestras' ? (
@@ -856,6 +878,14 @@ export function App() {
             <Select label="Categoría" data={['Supermercado', 'Combustible & Transporte', 'Restaurantes', 'Fotografía & Tecnología', 'Streaming', 'Salud', 'Educación']} value={expenseCat} onChange={setExpenseCat} required />
             <NumberInput label="Monto en Soles (S/)" placeholder="0.00" value={expenseAmount} onChange={setExpenseAmount} min={0} decimalScale={2} required />
             <Select label="Cuenta o Tarjeta de Origen" data={accountNames} defaultValue={accountNames[0]} />
+            <Select
+              label="Vincular a Meta de Ahorro"
+              placeholder="Selecciona una meta (opcional)"
+              data={goals.map(g => ({ value: g.id, label: g.name }))}
+              value={expenseSavingsGoalId}
+              onChange={setExpenseSavingsGoalId}
+              clearable
+            />
             <Button color="teal" fullWidth onClick={handleAddExpense} leftSection={<IconSend size={18} />}>
               Guardar Gasto
             </Button>
@@ -869,6 +899,14 @@ export function App() {
             <Select label="Cuenta Destino" data={accountNames} defaultValue={accountNames.length > 1 ? accountNames[1] : accountNames[0]} />
             <NumberInput label="Monto a Transferir" placeholder="0.00" value={transferAmount} onChange={setTransferAmount} min={0} decimalScale={2} required />
             <NumberInput label="Comisión Bancaria (Registrado como único Gasto)" placeholder="0.00" value={transferFee} onChange={setTransferFee} min={0} decimalScale={2} />
+            <Select
+              label="Vincular a Meta de Ahorro"
+              placeholder="Selecciona una meta (opcional)"
+              data={goals.map(g => ({ value: g.id, label: g.name }))}
+              value={transferSavingsGoalId}
+              onChange={setTransferSavingsGoalId}
+              clearable
+            />
             <Text size="xs" c="dimmed">
               * Nota: El capital transferido NO afecta el presupuesto ni duplica el gasto patrimonial.
             </Text>
@@ -933,6 +971,14 @@ export function App() {
                 required 
               />
             )}
+            <Select
+              label="Vincular a Meta de Ahorro"
+              placeholder="Selecciona una meta (opcional)"
+              data={goals.map(g => ({ value: g.id, label: g.name }))}
+              value={editTxSavingsGoalId}
+              onChange={setEditTxSavingsGoalId}
+              clearable
+            />
             <Button color="blue" fullWidth onClick={handleUpdateTx} leftSection={<IconEdit size={18} />}>
               Actualizar Movimiento
             </Button>

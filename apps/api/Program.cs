@@ -164,6 +164,11 @@ try
     await db.Database.ExecuteSqlRawAsync(@"
         ALTER TABLE ""Budgets"" ADD COLUMN IF NOT EXISTS ""IsAnnual"" BOOLEAN NOT NULL DEFAULT FALSE;
     ");
+
+    // Asegurar la columna SavingsGoalId en la tabla Transactions
+    await db.Database.ExecuteSqlRawAsync(@"
+        ALTER TABLE ""Transactions"" ADD COLUMN IF NOT EXISTS ""SavingsGoalId"" UUID NULL;
+    ");
     
     app.Logger.LogInformation("[DB] PostgreSQL conectado y esquema sincronizado.");
 }
