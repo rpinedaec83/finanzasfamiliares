@@ -62,18 +62,29 @@ public class CreditCardsController : ControllerBase
     public async Task<IActionResult> CreateCreditCard([FromBody] CreditCard card)
     {
         card.Id = Guid.NewGuid();
-        if (_context != null)
+
+        var familyIdClaim = User.FindFirst("FamilyId")?.Value;
+        if (Guid.TryParse(familyIdClaim, out var familyId))
         {
-            try
-            {
-                await _context.CreditCards.AddAsync(card);
-                await _context.SaveChangesAsync();
-                return CreatedAtAction(nameof(GetCreditCards), new { id = card.Id }, card);
-            }
-            catch { }
+            card.FamilyId = familyId;
         }
 
-        InMemoryCards.Add(card);
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (Guid.TryParse(userIdClaim, out var userId))
+        {
+            card.OwnerUserId = userId;
+        }
+
+        if (_context != null)
+        {
+            await _context.CreditCards.AddAsync(card);
+            await _context.SaveChangesAsync();
+        }
+        else
+        {
+            InMemoryCards.Add(card);
+        }
+
         return CreatedAtAction(nameof(GetCreditCards), new { id = card.Id }, card);
     }
 

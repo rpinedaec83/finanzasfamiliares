@@ -33,6 +33,12 @@ public class GoalsController : ControllerBase
         }
         // Asegurar que la fecha de la meta esté marcada como UTC para postgres
         goal.TargetDate = DateTime.SpecifyKind(goal.TargetDate, DateTimeKind.Utc);
+
+        var familyIdClaim = User.FindFirst("FamilyId")?.Value;
+        if (Guid.TryParse(familyIdClaim, out var familyId))
+        {
+            goal.FamilyId = familyId;
+        }
         
         await _context.SavingsGoals.AddAsync(goal);
         await _context.SaveChangesAsync();

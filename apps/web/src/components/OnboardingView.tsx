@@ -72,6 +72,14 @@ export function OnboardingView({ onComplete }: OnboardingViewProps) {
   const handleFinish = async () => {
     setLoading(true);
     try {
+      const bankIds: Record<string, string> = {
+        'BCP': '10000000-0000-0000-0000-000000000001',
+        'BBVA': '10000000-0000-0000-0000-000000000002',
+        'Interbank': '10000000-0000-0000-0000-000000000003',
+        'Banco Falabella': '10000000-0000-0000-0000-000000000004',
+        'Efectivo': '10000000-0000-0000-0000-000000000001'
+      };
+
       // 1. Guardar la primera Cuenta
       const lastFour = accountCci.trim().slice(-4) || '0000';
       await fetch('/api/accounts', {
@@ -81,6 +89,7 @@ export function OnboardingView({ onComplete }: OnboardingViewProps) {
           bankName,
           name: accountName,
           cciNumber: accountCci,
+          institutionId: bankIds[bankName] || bankIds['BCP'],
           type: 1, // Savings
           currency: accountCurrency === 'PEN' ? 0 : 1,
           balanceAvailable: Number(accountBalance),
@@ -96,13 +105,13 @@ export function OnboardingView({ onComplete }: OnboardingViewProps) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            bankName: cardBank,
             name: cardName,
+            institutionId: bankIds[cardBank] || bankIds['BCP'],
             creditLimit: Number(cardLimit),
             availableLimit: Number(cardLimit),
             closingDay: Number(cardClosingDay),
-            paymentDay: Number(cardPaymentDay),
-            currency: cardCurrency === 'PEN' ? 0 : 1,
+            dueDay: Number(cardPaymentDay),
+            mainCurrency: cardCurrency === 'PEN' ? 0 : 1,
             lastFourDigits: '1234'
           }),
         });

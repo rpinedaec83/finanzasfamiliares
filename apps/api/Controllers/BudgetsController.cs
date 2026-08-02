@@ -27,6 +27,13 @@ public class BudgetsController : ControllerBase
     public async Task<IActionResult> CreateBudget([FromBody] Budget budget)
     {
         budget.Id = Guid.NewGuid();
+
+        var familyIdClaim = User.FindFirst("FamilyId")?.Value;
+        if (Guid.TryParse(familyIdClaim, out var familyId))
+        {
+            budget.FamilyId = familyId;
+        }
+
         await _context.Budgets.AddAsync(budget);
         await _context.SaveChangesAsync();
         return Ok(budget);

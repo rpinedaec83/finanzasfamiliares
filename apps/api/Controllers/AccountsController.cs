@@ -83,14 +83,23 @@ public class AccountsController : ControllerBase
     public async Task<IActionResult> CreateAccount([FromBody] Account account)
     {
         account.Id = Guid.NewGuid();
+
+        var familyIdClaim = User.FindFirst("FamilyId")?.Value;
+        if (Guid.TryParse(familyIdClaim, out var familyId))
+        {
+            account.FamilyId = familyId;
+        }
+
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (Guid.TryParse(userIdClaim, out var userId))
+        {
+            account.OwnerUserId = userId;
+        }
+
         if (_context != null)
         {
-            try
-            {
-                await _context.Accounts.AddAsync(account);
-                await _context.SaveChangesAsync();
-            }
-            catch { }
+            await _context.Accounts.AddAsync(account);
+            await _context.SaveChangesAsync();
         }
 
         InMemoryAccounts.Add(account);
