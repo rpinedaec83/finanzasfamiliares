@@ -324,6 +324,8 @@ export function App() {
 
   const [transferAmount, setTransferAmount] = useState<number | string>(0);
   const [transferFee, setTransferFee] = useState<number | string>(0);
+  const [transferOriginName, setTransferOriginName] = useState<string | null>(null);
+  const [transferDestName, setTransferDestName] = useState<string | null>(null);
 
   const [exchangeType, setExchangeType] = useState('Venta');
   const [deliveredUSD, setDeliveredUSD] = useState<number | string>(1000);
@@ -332,6 +334,12 @@ export function App() {
   const calculatedRate = Number(deliveredUSD) > 0 ? (Number(receivedPEN) / Number(deliveredUSD)).toFixed(4) : '0.0000';
 
   const accountNames = accounts.map((a: any) => a.name);
+  const allOriginNames = [...accounts.map((a: any) => a.name), ...creditCards.map((c: any) => c.name)];
+  const allDestNames = [
+    ...accounts.map((a: any) => a.name),
+    ...creditCards.map((c: any) => c.name),
+    ...deposits.map((d: any) => d.name || (d as any).Name || 'Plazo Fijo')
+  ];
 
   // Estados para asociar metas de ahorro
   const [expenseSavingsGoalId, setExpenseSavingsGoalId] = useState<string | null>(null);
@@ -493,25 +501,109 @@ export function App() {
     }
   };
 
-  const handleAddTransfer = () => {
+  const handleAddTransfer = async () => {
     if (Number(transferAmount) <= 0) return;
-    const newTx = {
-      id: Date.now(),
-      date: '01/08/2026',
-      desc: `Transferencia Interna (Comisión S/ ${Number(transferFee).toFixed(2)})`,
-      cat: 'Transferencia',
-      account: 'BCP Sueldo ➔ Interbank Ahorro',
-      type: 'Transferencia',
-      amount: `S/ ${Number(transferAmount).toFixed(2)}`,
-      color: 'gray',
-      savingsGoalId: transferSavingsGoalId,
-      SavingsGoalId: transferSavingsGoalId
-    };
-    setTransactions([newTx, ...transactions]);
-    setTransferAmount(0);
-    setTransferFee(0);
-    setTransferSavingsGoalId(null);
-    setModalType(null);
+
+    const originSelected = transferOriginName || allOriginNames[0];
+    const destSelected = transferDestName || allDestNames[1] || allDestNames[0];
+
+    // Buscar si origen es cuenta o tarjeta de crédito
+    const originAccount = accounts.find(a => a.name === originSelected);
+    const originCard = creditCards.find(c => c.name === originSelected);
+
+    // Buscar si destino es cuenta, tarjeta o depósito
+    const destAccount = accounts.find(a => a.name === destSelected);
+    const destCard = creditCards.find(c => c.name === destSelected);
+
+    // Determinar IDs reales
+    const originAccountId = originAccount ? originAccount.id : (accounts[0]?.id || '00000000-0000-0000-0000-000000000000');
+    const originCardId = originCard ? originCard.id : null;
+
+    const destAccountId = destAccount ? destAccount.id : (accounts[0]?.id || '00000000-0000-0000-0000-000000000000');
+    const destCardId = destCard ? destCard.id : null;
+
+    const dateStr = new Date().toISOString();
+    const bulkPayload: any[] = [];
+
+    // 1. Leg de salida (Egreso)
+    bulkPayload.push({
+      accountId: originAccountId,
+      creditCardId: originCardId,
+      savingsGoalId: transferSavingsGoalId || null,
+      operationDate: dateStr,
+      descriptionOriginal: `Transferencia Enviada a ${destSelected}`,
+      descriptionNormalized: `TRANSFERENCIA ENVIADA A ${destSelected.toUpperCase()}`,
+      amount: -Number(transferAmount),
+      currency: 0, // PEN
+      convertedAmount: -Number(transferAmount),
+      exchangeRate: 1.0,
+      type: 2, // Transfer leg
+      status: 0,
+      category: 'Transferencia',
+      merchant: ''
+    });
+
+    // 2. Leg de entrada (Ingreso)
+    // Si el destino es un depósito a plazo fijo, se vincula a la cuenta destino por defecto
+    bulkPayload.push({
+      accountId: destAccountId,
+      creditCardId: destCardId,
+      savingsGoalId: transferSavingsGoalId || null,
+      operationDate: dateStr,
+      descriptionOriginal: `Transferencia Recibida de ${originSelected}`,
+      descriptionNormalized: `TRANSFERENCIA RECIBIDA DE ${originSelected.toUpperCase()}`,
+      amount: Number(transferAmount),
+      currency: 0, // PEN
+      convertedAmount: Number(transferAmount),
+      exchangeRate: 1.0,
+      type: 2, // Transfer leg
+      status: 0,
+      category: 'Transferencia',
+      merchant: ''
+    });
+
+    // 3. Leg de comisión (si aplica)
+    if (Number(transferFee) > 0) {
+      bulkPayload.push({
+        accountId: originAccountId,
+        creditCardId: originCardId,
+        savingsGoalId: null,
+        operationDate: dateStr,
+        descriptionOriginal: `Comisión Transferencia a ${destSelected}`,
+        descriptionNormalized: `COMISION TRANSFERENCIA A ${destSelected.toUpperCase()}`,
+        amount: -Number(transferFee),
+        currency: 0,
+        convertedAmount: -Number(transferFee),
+        exchangeRate: 1.0,
+        type: 3, // Commission
+        status: 0,
+        category: 'Comisión bancaria',
+        merchant: ''
+      });
+    }
+
+    try {
+      const response = await fetch('/api/transactions/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bulkPayload),
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al registrar transferencia');
+      }
+
+      loadUserData();
+      setTransferAmount(0);
+      setTransferFee(0);
+      setTransferOriginName(null);
+      setTransferDestName(null);
+      setTransferSavingsGoalId(null);
+      setModalType(null);
+    } catch (error) {
+      console.error(error);
+      alert('Error al guardar la transferencia en la base de datos.');
+    }
   };
 
   const handleAddExchange = () => {
@@ -1079,9 +1171,11 @@ export function App() {
             <NumberInput label="Monto en Soles (S/)" placeholder="0.00" value={expenseAmount} onChange={setExpenseAmount} min={0} decimalScale={2} required />
             <Select 
               label="Cuenta o Tarjeta de Origen" 
-              data={accountNames} 
-              value={expenseAccountName || accountNames[0]} 
-              onChange={setExpenseAccountName} 
+              data={allOriginNames} 
+              value={expenseAccountName || allOriginNames[0]} 
+              onChange={expenseName => {
+                setExpenseAccountName(expenseName);
+              }} 
             />
             <Select
               label="Vincular a Meta de Ahorro"
@@ -1100,8 +1194,18 @@ export function App() {
         {/* MODAL 2: TRANSFERENCIA PROPIA */}
         <Modal opened={modalType === 'transfer'} onClose={() => setModalType(null)} title="Transferir entre Cuentas Propias" centered radius="md">
           <Stack gap="md">
-            <Select label="Cuenta Origen" data={accountNames} defaultValue={accountNames[0]} />
-            <Select label="Cuenta Destino" data={accountNames} defaultValue={accountNames.length > 1 ? accountNames[1] : accountNames[0]} />
+            <Select 
+              label="Cuenta Origen" 
+              data={allOriginNames} 
+              value={transferOriginName || allOriginNames[0]} 
+              onChange={setTransferOriginName} 
+            />
+            <Select 
+              label="Cuenta Destino" 
+              data={allDestNames} 
+              value={transferDestName || allDestNames[1] || allDestNames[0]} 
+              onChange={setTransferDestName} 
+            />
             <NumberInput label="Monto a Transferir" placeholder="0.00" value={transferAmount} onChange={setTransferAmount} min={0} decimalScale={2} required />
             <NumberInput label="Comisión Bancaria (Registrado como único Gasto)" placeholder="0.00" value={transferFee} onChange={setTransferFee} min={0} decimalScale={2} />
             <Select
@@ -1154,16 +1258,16 @@ export function App() {
               <>
                 <Select 
                   label="Cuenta Origen" 
-                  data={accountNames} 
+                  data={allOriginNames} 
                   value={editTxOrigin}
-                  onChange={(val) => setEditTxOrigin(val || accountNames[0])} 
+                  onChange={(val) => setEditTxOrigin(val || allOriginNames[0])} 
                   required
                 />
                 <Select 
                   label="Cuenta Destino" 
-                  data={accountNames} 
+                  data={allDestNames} 
                   value={editTxDest}
-                  onChange={(val) => setEditTxDest(val || accountNames[0])} 
+                  onChange={(val) => setEditTxDest(val || allDestNames[0])} 
                   required
                 />
               </>
