@@ -399,11 +399,9 @@ export function App() {
     .reduce((sum, t) => sum + convertAmount(getRawAmount(t), getCurrency(t), t.date), 0);
 
   const patrimonioDeposits = deposits
-    .filter((d) => d.status === 'Active' || d.status === 'Matured')
+    .filter((d) => d.status === 'activo' || d.status === 'vencido')
     .reduce((sum, d) => {
-      const principal = d.initialPrincipal ?? d.InitialPrincipal ?? 0;
-      const currencyStr = (d.currency === 0 || d.currency === 'PEN') ? 'PEN' : 'USD';
-      return sum + convertCurrentBalance(principal, currencyStr);
+      return sum + convertCurrentBalance(d.principal || 0, d.currency);
     }, 0);
 
   const patrimonioTotal = patrimonioCuentas + patrimonioTransacciones + patrimonioDeposits;
