@@ -26,12 +26,16 @@ import { TextImportModal } from './TextImportModal';
 interface ImportViewProps {
   onImportItems?: (items: any[]) => void;
   accounts?: { id: number; name: string }[];
+  creditCards?: { id: string; name: string }[];
 }
 
-export function ImportView({ onImportItems, accounts }: ImportViewProps) {
+export function ImportView({ onImportItems, accounts, creditCards }: ImportViewProps) {
   const [selectedBank, setSelectedBank] = useState<string | null>('bcp');
   const [textModalOpened, setTextModalOpened] = useState(false);
   const [isUploaded, setIsUploaded] = useState(false);
+
+  const cardAsAccounts = (creditCards || []).map((c, i) => ({ id: 20000 + i, name: c.name || (c as any).Name || '' }));
+  const allAccountsForImport = [...(accounts || []), ...cardAsAccounts];
 
   const [previewRows, setPreviewRows] = useState([
     { id: 1, date: '28/07/2026', desc: 'COMPRA SUPERMERCADOS WONG PE', normalized: 'Supermercados Wong', amount: 'S/ 385.50', isDebit: true, cat: 'Supermercado', duplicate: false, confirmed: true },
@@ -77,7 +81,7 @@ export function ImportView({ onImportItems, accounts }: ImportViewProps) {
             onImportItems(newItems);
           }
         }}
-        accounts={accounts}
+        accounts={allAccountsForImport}
       />
 
       <Grid>

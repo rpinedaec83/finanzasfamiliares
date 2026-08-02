@@ -637,7 +637,7 @@ export function App() {
                 getCurrency={getCurrency}
               />
             ) : activeTab === 'Importación & OCR' ? (
-              <ImportView accounts={accounts} onImportItems={handleImportItems} />
+              <ImportView accounts={accounts} creditCards={creditCards} onImportItems={handleImportItems} />
             ) : activeTab === 'Catálogos & Maestras' ? (
               <CatalogsView />
             ) : activeTab === 'Alertas' ? (
